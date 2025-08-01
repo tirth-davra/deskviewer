@@ -8,9 +8,11 @@ export default function ClientPage() {
   const [hostIP, setHostIP] = useState('localhost')
   const [isConnected, setIsConnected] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [viewMode, setViewMode] = useState<'windowed' | 'fullscreen'>('windowed')
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
   const [errorMessage, setErrorMessage] = useState('')
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const windowedVideoRef = useRef<HTMLVideoElement>(null)
+  const fullscreenVideoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const webrtcManagerRef = useRef<WebRTCManager | null>(null)
 
@@ -40,11 +42,14 @@ export default function ClientPage() {
         setConnectionStatus('connected')
         
         setTimeout(() => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream
-            videoRef.current.play().then(() => {
-              // Auto-enter fullscreen mode like AnyDesk
-              enterFullscreen()
+          const videoElement = viewMode === 'windowed' ? windowedVideoRef.current : fullscreenVideoRef.current
+          if (videoElement) {
+            videoElement.srcObject = stream
+            videoElement.play().then(() => {
+              // Enter fullscreen only if user selected fullscreen mode
+              if (viewMode === 'fullscreen') {
+                enterFullscreen()
+              }
             }).catch(e => {
               console.error('Video play failed:', e)
             })
@@ -120,11 +125,15 @@ export default function ClientPage() {
     setConnectionStatus('disconnected')
     setErrorMessage('')
     
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream
-      stream.getTracks().forEach(track => track.stop())
-      videoRef.current.srcObject = null
-    }
+    // Stop video streams from both video elements
+    const videoElements = [windowedVideoRef.current, fullscreenVideoRef.current]
+    videoElements.forEach(videoElement => {
+      if (videoElement && videoElement.srcObject) {
+        const stream = videoElement.srcObject as MediaStream
+        stream.getTracks().forEach(track => track.stop())
+        videoElement.srcObject = null
+      }
+    })
 
     // Disconnect WebRTC
     if (webrtcManagerRef.current) {
@@ -199,6 +208,53 @@ export default function ClientPage() {
                 </div>
               </div>
               
+              {/* View Mode Selection */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Display Mode
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setViewMode('windowed')}
+                    disabled={isConnected}
+                    className={`p-4 border-2 rounded-lg transition-all duration-200 ${
+                      viewMode === 'windowed'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-green-300'
+                    } ${isConnected ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <div className="text-center">
+                      <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2z" />
+                      </svg>
+                      <h3 className="font-semibold text-sm">Windowed</h3>
+                      <p className="text-xs mt-1">Small window, multitask</p>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setViewMode('fullscreen')}
+                    disabled={isConnected}
+                    className={`p-4 border-2 rounded-lg transition-all duration-200 ${
+                      viewMode === 'fullscreen'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-green-300'
+                    } ${isConnected ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <div className="text-center">
+                      <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                      <h3 className="font-semibold text-sm">Fullscreen</h3>
+                      <p className="text-xs mt-1">Like AnyDesk</p>
+                    </div>
+                  </button>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  Choose how you want to view the remote screen
+                </p>
+              </div>
+
               {/* Host IP Input */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -308,7 +364,18 @@ export default function ClientPage() {
             <div className="bg-white rounded-2xl shadow-xl p-8">
               <h2 className="text-2xl font-semibold text-gray-800 mb-6">Remote Screen</h2>
               
-              <div className="bg-gray-100 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
+              <div className="bg-gray-100 rounded-lg overflow-hidden aspect-video flex items-center justify-center relative">
+                {/* Windowed mode video */}
+                {isConnected && viewMode === 'windowed' && (
+                  <video
+                    ref={windowedVideoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                )}
+                
                 {!isConnected && (
                   <div className="text-center text-gray-500">
                     <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,20 +386,39 @@ export default function ClientPage() {
                     <p className="text-sm">Enter a session ID and click "Connect"</p>
                   </div>
                 )}
-              </div>
-              
-              {/* Fullscreen Button */}
-              {isConnected && !isFullscreen && (
-                <div className="mt-4">
-                  <button
-                    onClick={enterFullscreen}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                
+                {isConnected && viewMode === 'fullscreen' && (
+                  <div className="text-center text-gray-500">
+                    <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                     </svg>
-                    <span>Enter Fullscreen Mode</span>
-                  </button>
+                    <p className="text-lg font-medium">Fullscreen mode active</p>
+                    <p className="text-sm">Press ESC or click the exit button to return</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* View Mode Controls */}
+              {isConnected && (
+                <div className="mt-4 space-y-3">
+                  {viewMode === 'windowed' && !isFullscreen && (
+                    <button
+                      onClick={enterFullscreen}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                      <span>Switch to Fullscreen</span>
+                    </button>
+                  )}
+                  
+                  {viewMode === 'fullscreen' && !isFullscreen && (
+                    <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-blue-700 font-medium">Fullscreen mode will activate automatically</p>
+                      <p className="text-sm text-blue-600 mt-1">The remote screen will take over your entire display</p>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -351,14 +437,16 @@ export default function ClientPage() {
           </div>
         )}
 
-        {/* Always render video element for fullscreen */}
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          className={`${isFullscreen ? 'w-full h-full object-contain' : 'hidden'}`}
-        />
+        {/* Fullscreen video element (only for fullscreen mode) */}
+        {viewMode === 'fullscreen' && (
+          <video
+            ref={fullscreenVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className={`${isFullscreen ? 'w-full h-full object-contain' : 'hidden'}`}
+          />
+        )}
       </div>
     </React.Fragment>
   )
