@@ -14,9 +14,14 @@ if (isProd) {
 ;(async () => {
   await app.whenReady()
 
+  const electronRole = process.env.ELECTRON_ROLE || 'default'
+  const windowTitle = electronRole === 'host' ? 'DeskViewer - Host' : 
+                     electronRole === 'client' ? 'DeskViewer - Client' : 'DeskViewer'
+  
   const mainWindow = createWindow('main', {
     width: 1200,
     height: 800,
+    title: windowTitle,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -27,10 +32,12 @@ if (isProd) {
   })
 
   if (isProd) {
-    await mainWindow.loadURL('app://./')
+    const roleParam = electronRole !== 'default' ? `?role=${electronRole}` : ''
+    await mainWindow.loadURL(`app://./${roleParam}`)
   } else {
     const port = process.argv[2]
-    await mainWindow.loadURL(`http://localhost:${port}/`)
+    const roleParam = electronRole !== 'default' ? `?role=${electronRole}` : ''
+    await mainWindow.loadURL(`http://localhost:${port}/${roleParam}`)
     mainWindow.webContents.openDevTools()
   }
 

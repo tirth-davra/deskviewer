@@ -48,8 +48,17 @@ export class WebRTCManager {
     }
 
     this.peerConnection.ontrack = (event) => {
-      console.log('Received remote stream')
-      this.onStreamReceived?.(event.streams[0])
+      console.log('🎥 ONTRACK EVENT FIRED!', event)
+      console.log('Event streams:', event.streams)
+      console.log('Event track:', event.track)
+      
+      if (event.streams && event.streams[0]) {
+        console.log('✅ Stream received, calling callback')
+        console.log('Stream tracks:', event.streams[0].getTracks())
+        this.onStreamReceived?.(event.streams[0])
+      } else {
+        console.error('❌ No streams in ontrack event')
+      }
     }
   }
 
@@ -74,8 +83,12 @@ export class WebRTCManager {
 
   private async connectWebSocket(): Promise<void> {
     return new Promise((resolve, reject) => {
-      console.log('Attempting to connect to WebSocket server...')
-      this.ws = new WebSocket('ws://localhost:8080')
+      // Check if HOST_IP environment variable is set, otherwise use localhost
+      const hostIP = process.env.HOST_IP || 'localhost'
+      const wsUrl = `ws://${hostIP}:8080`
+      
+      console.log('Attempting to connect to WebSocket server:', wsUrl)
+      this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = () => {
         console.log('WebSocket connected successfully')

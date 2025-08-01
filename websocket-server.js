@@ -2,11 +2,32 @@ const { WebSocketServer } = require('ws')
 
 class SignalingServer {
   constructor(port = 8080) {
-    this.wss = new WebSocketServer({ port })
+    this.wss = new WebSocketServer({ 
+      port,
+      host: '0.0.0.0' // Listen on all network interfaces
+    })
     this.sessions = new Map()
     this.setupEventHandlers()
+    
+    // Get local IP address
+    const os = require('os')
+    const networkInterfaces = os.networkInterfaces()
+    let localIP = 'localhost'
+    
+    for (const interfaceName in networkInterfaces) {
+      const networkInterface = networkInterfaces[interfaceName]
+      for (const network of networkInterface) {
+        if (network.family === 'IPv4' && !network.internal) {
+          localIP = network.address
+          break
+        }
+      }
+    }
+    
     console.log(`✅ WebSocket signaling server started on port ${port}`)
     console.log(`📡 Server is ready to accept connections`)
+    console.log(`🌐 Local network access: ws://${localIP}:${port}`)
+    console.log(`🏠 Localhost access: ws://localhost:${port}`)
   }
 
   setupEventHandlers() {

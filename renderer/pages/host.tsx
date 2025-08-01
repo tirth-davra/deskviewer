@@ -60,9 +60,13 @@ export default function HostPage() {
       })
 
       // Start WebRTC host session
+      console.log('🚀 HOST: Starting WebRTC host session...')
+      console.log('Stream to add:', stream)
+      console.log('Stream tracks:', stream.getTracks())
+      
       await webrtcManagerRef.current.startHost(sessionId, stream)
       
-      console.log('Screen sharing started with session ID:', sessionId)
+      console.log('✅ HOST: Screen sharing started with session ID:', sessionId)
       
     } catch (error) {
       console.error('Error starting screen sharing:', error)

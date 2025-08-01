@@ -26,11 +26,30 @@ export default function ClientPage() {
       
       // Set up stream received handler
       webrtcManagerRef.current.setOnStreamReceived((stream) => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-        }
+        console.log('🎥 CLIENT: Stream received callback triggered!', stream)
+        console.log('Stream tracks:', stream.getTracks())
+        console.log('Video element:', videoRef.current)
+        
+        // Set connected state first so video element becomes visible
         setIsConnected(true)
         setConnectionStatus('connected')
+        
+        // Use setTimeout to ensure React has rendered the video element
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream
+            console.log('✅ CLIENT: Stream set to video element')
+            
+            // Force video to play
+            videoRef.current.play().then(() => {
+              console.log('✅ CLIENT: Video started playing')
+            }).catch(e => {
+              console.error('❌ CLIENT: Video play failed:', e)
+            })
+          } else {
+            console.error('❌ CLIENT: Video element still not found after timeout!')
+          }
+        }, 100) // Small delay to let React render
       })
 
       // Set up connection state change handler
@@ -212,16 +231,19 @@ export default function ClientPage() {
               <h2 className="text-2xl font-semibold text-gray-800 mb-6">Remote Screen</h2>
               
               <div className="bg-gray-100 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
-                {isConnected ? (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
+                {/* Always render video element, but hide/show based on connection */}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className={`w-full h-full object-contain ${isConnected ? 'block' : 'hidden'}`}
+                />
+                
+                {!isConnected && (
                   <div className="text-center text-gray-500">
                     <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 616 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
                     <p className="text-lg font-medium">Remote screen will appear here</p>
