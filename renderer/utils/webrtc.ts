@@ -48,16 +48,8 @@ export class WebRTCManager {
     }
 
     this.peerConnection.ontrack = (event) => {
-      console.log('🎥 ONTRACK EVENT FIRED!', event)
-      console.log('Event streams:', event.streams)
-      console.log('Event track:', event.track)
-      
       if (event.streams && event.streams[0]) {
-        console.log('✅ Stream received, calling callback')
-        console.log('Stream tracks:', event.streams[0].getTracks())
         this.onStreamReceived?.(event.streams[0])
-      } else {
-        console.error('❌ No streams in ontrack event')
       }
     }
   }
@@ -90,10 +82,7 @@ export class WebRTCManager {
                      'localhost'
       const wsUrl = `ws://${hostIP}:8080`
       
-      console.log('HOST_IP from env:', process.env.HOST_IP)
-      console.log('HOST_IP from window:', (window as any).HOST_IP)
-      console.log('HOST_IP from localStorage:', localStorage.getItem('HOST_IP'))
-      console.log('Final WebSocket URL:', wsUrl)
+      // Use configured host IP for connection
       
       this.ws = new WebSocket(wsUrl)
 
@@ -188,15 +177,9 @@ export class WebRTCManager {
       throw new Error('Peer connection not initialized')
     }
 
-    console.log('🎥 Adding stream to peer connection:', stream)
-    console.log('Stream tracks:', stream.getTracks())
-    
     stream.getTracks().forEach(track => {
-      console.log('Adding track:', track.kind, track.label)
       this.peerConnection?.addTrack(track, stream)
     })
-    
-    console.log('✅ All tracks added to peer connection')
   }
 
   private handleSignalingMessage(message: SignalingMessage) {

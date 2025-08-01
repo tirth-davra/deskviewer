@@ -7,9 +7,11 @@ export default function ClientPage() {
   const [sessionId, setSessionId] = useState('')
   const [hostIP, setHostIP] = useState('localhost')
   const [isConnected, setIsConnected] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
   const [errorMessage, setErrorMessage] = useState('')
   const videoRef = useRef<HTMLVideoElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const webrtcManagerRef = useRef<WebRTCManager | null>(null)
 
   const connectToHost = async () => {
@@ -26,37 +28,28 @@ export default function ClientPage() {
       localStorage.setItem('HOST_IP', hostIP);
       (window as any).HOST_IP = hostIP;
       
-      console.log('🌐 CLIENT: Setting HOST_IP to:', hostIP)
+      // Set HOST_IP for WebRTC connection
       
       // Initialize WebRTC manager
       webrtcManagerRef.current = new WebRTCManager()
       
       // Set up stream received handler
       webrtcManagerRef.current.setOnStreamReceived((stream) => {
-        console.log('🎥 CLIENT: Stream received callback triggered!', stream)
-        console.log('Stream tracks:', stream.getTracks())
-        console.log('Video element:', videoRef.current)
-        
-        // Set connected state first so video element becomes visible
+        // Set connected state and auto-enter fullscreen
         setIsConnected(true)
         setConnectionStatus('connected')
         
-        // Use setTimeout to ensure React has rendered the video element
         setTimeout(() => {
           if (videoRef.current) {
             videoRef.current.srcObject = stream
-            console.log('✅ CLIENT: Stream set to video element')
-            
-            // Force video to play
             videoRef.current.play().then(() => {
-              console.log('✅ CLIENT: Video started playing')
+              // Auto-enter fullscreen mode like AnyDesk
+              enterFullscreen()
             }).catch(e => {
-              console.error('❌ CLIENT: Video play failed:', e)
+              console.error('Video play failed:', e)
             })
-          } else {
-            console.error('❌ CLIENT: Video element still not found after timeout!')
           }
-        }, 100) // Small delay to let React render
+        }, 100)
       })
 
       // Set up connection state change handler
@@ -87,7 +80,42 @@ export default function ClientPage() {
     }
   }
 
+  const enterFullscreen = async () => {
+    try {
+      if (containerRef.current && !isFullscreen) {
+        await containerRef.current.requestFullscreen()
+        setIsFullscreen(true)
+      }
+    } catch (error) {
+      console.error('Failed to enter fullscreen:', error)
+    }
+  }
+
+  const exitFullscreen = async () => {
+    try {
+      if (document.fullscreenElement && isFullscreen) {
+        await document.exitFullscreen()
+        setIsFullscreen(false)
+      }
+    } catch (error) {
+      console.error('Failed to exit fullscreen:', error)
+    }
+  }
+
+  const toggleFullscreen = () => {
+    if (isFullscreen) {
+      exitFullscreen()
+    } else {
+      enterFullscreen()
+    }
+  }
+
   const disconnect = () => {
+    // Exit fullscreen before disconnecting
+    if (isFullscreen) {
+      exitFullscreen()
+    }
+    
     setIsConnected(false)
     setConnectionStatus('disconnected')
     setErrorMessage('')
@@ -111,18 +139,43 @@ export default function ClientPage() {
         <title>Client - DeskViewer</title>
       </Head>
       
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
-        <div className="container mx-auto px-4 py-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <Link href="/home" className="text-green-600 hover:text-green-800 font-medium flex items-center space-x-2">
+      <div ref={containerRef} className={`${isFullscreen ? 'fixed inset-0 bg-black z-50' : 'min-h-screen bg-gradient-to-br from-green-50 to-emerald-100'}`}>
+        {/* Fullscreen Controls Overlay */}
+        {isFullscreen && isConnected && (
+          <div className="absolute top-4 right-4 z-60 flex space-x-2">
+            <button
+              onClick={toggleFullscreen}
+              className="bg-black bg-opacity-50 text-white p-2 rounded-lg hover:bg-opacity-70 transition-opacity"
+              title="Exit Fullscreen (ESC)"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              <span>Back to Home</span>
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-800">Client Mode</h1>
+            </button>
+            <button
+              onClick={disconnect}
+              className="bg-red-600 bg-opacity-80 text-white p-2 rounded-lg hover:bg-opacity-100 transition-opacity"
+              title="Disconnect"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </button>
           </div>
+        )}
+
+        {!isFullscreen && (
+          <div className="container mx-auto px-4 py-8">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <Link href="/home" className="text-green-600 hover:text-green-800 font-medium flex items-center space-x-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>Back to Home</span>
+              </Link>
+              <h1 className="text-3xl font-bold text-gray-800">Client Mode</h1>
+            </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Panel - Connection Controls */}
@@ -256,15 +309,6 @@ export default function ClientPage() {
               <h2 className="text-2xl font-semibold text-gray-800 mb-6">Remote Screen</h2>
               
               <div className="bg-gray-100 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
-                {/* Always render video element, but hide/show based on connection */}
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className={`w-full h-full object-contain ${isConnected ? 'block' : 'hidden'}`}
-                />
-                
                 {!isConnected && (
                   <div className="text-center text-gray-500">
                     <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,6 +320,21 @@ export default function ClientPage() {
                   </div>
                 )}
               </div>
+              
+              {/* Fullscreen Button */}
+              {isConnected && !isFullscreen && (
+                <div className="mt-4">
+                  <button
+                    onClick={enterFullscreen}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    </svg>
+                    <span>Enter Fullscreen Mode</span>
+                  </button>
+                </div>
+              )}
               
               {isConnected && (
                 <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -289,7 +348,16 @@ export default function ClientPage() {
               )}
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Always render video element for fullscreen */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          className={`${isFullscreen ? 'w-full h-full object-contain' : 'hidden'}`}
+        />
       </div>
     </React.Fragment>
   )

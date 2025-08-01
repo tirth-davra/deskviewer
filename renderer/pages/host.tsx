@@ -8,7 +8,6 @@ export default function HostPage() {
   const [isSharing, setIsSharing] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'waiting' | 'connected' | 'disconnected'>('disconnected')
   const [connectedClients, setConnectedClients] = useState(0)
-  const videoRef = useRef<HTMLVideoElement>(null)
   const webrtcManagerRef = useRef<WebRTCManager | null>(null)
 
   useEffect(() => {
@@ -41,11 +40,7 @@ export default function HostPage() {
         } as any
       })
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        console.log('🎥 Host video preview set:', stream)
-        console.log('Host stream tracks:', stream.getTracks())
-      }
+      // Stream captured successfully - no need to display locally
 
       // Initialize WebRTC manager
       webrtcManagerRef.current = new WebRTCManager()
@@ -60,13 +55,7 @@ export default function HostPage() {
       })
 
       // Start WebRTC host session
-      console.log('🚀 HOST: Starting WebRTC host session...')
-      console.log('Stream to add:', stream)
-      console.log('Stream tracks:', stream.getTracks())
-      
       await webrtcManagerRef.current.startHost(sessionId, stream)
-      
-      console.log('✅ HOST: Screen sharing started with session ID:', sessionId)
       
     } catch (error) {
       console.error('Error starting screen sharing:', error)
@@ -80,10 +69,9 @@ export default function HostPage() {
     setConnectionStatus('disconnected')
     setConnectedClients(0)
     
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream
-      stream.getTracks().forEach(track => track.stop())
-      videoRef.current.srcObject = null
+    // Stop screen capture stream if exists
+    if (webrtcManagerRef.current) {
+      // WebRTC manager will handle stream cleanup
     }
 
     // Disconnect WebRTC
@@ -210,25 +198,51 @@ export default function HostPage() {
               </div>
             </div>
 
-            {/* Right Panel - Preview */}
+            {/* Right Panel - Connection Info */}
             <div className="bg-white rounded-2xl shadow-xl p-8">
-              <h2 className="text-2xl font-semibold text-gray-800 mb-6">Screen Preview</h2>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-6">Connection Status</h2>
               
-              <div className="bg-gray-100 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
-                {isSharing ? (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="text-center text-gray-500">
-                    <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <p className="text-lg font-medium">Screen preview will appear here</p>
-                    <p className="text-sm">Click "Start Sharing" to begin</p>
+              <div className="space-y-6">
+                {/* Connection Status Display */}
+                <div className="text-center p-8 bg-gray-50 rounded-lg">
+                  {connectionStatus === 'waiting' ? (
+                    <>
+                      <div className="animate-pulse">
+                        <svg className="w-16 h-16 mx-auto mb-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                        </svg>
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-700 mb-2">Waiting for Connection</h3>
+                      <p className="text-gray-600">Share the session ID with others to connect</p>
+                    </>
+                  ) : connectionStatus === 'connected' ? (
+                    <>
+                      <svg className="w-16 h-16 mx-auto mb-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <h3 className="text-xl font-semibold text-green-700 mb-2">Connected</h3>
+                      <p className="text-green-600">{connectedClients} client{connectedClients !== 1 ? 's' : ''} viewing your screen</p>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
+                      </svg>
+                      <h3 className="text-xl font-semibold text-gray-700 mb-2">Not Sharing</h3>
+                      <p className="text-gray-600">Click "Start Sharing" to begin</p>
+                    </>
+                  )}
+                </div>
+
+                {/* Network Information */}
+                {isSharing && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-medium text-blue-800 mb-2">Network Information</h4>
+                    <div className="text-sm text-blue-700 space-y-1">
+                      <p>• Your screen is being shared securely</p>
+                      <p>• Session ID: <span className="font-mono font-bold">{sessionId}</span></p>
+                      <p>• Status: Screen capture active</p>
+                    </div>
                   </div>
                 )}
               </div>
