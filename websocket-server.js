@@ -271,14 +271,13 @@ class SignalingServer {
   }
 
   forwardMouseEvent(sessionId, clientId, eventType, mouseData, senderWs) {
-    console.log(`🖱️ Forwarding mouse event: ${eventType} for session: ${sessionId}`)
     const session = this.sessions.get(sessionId)
     if (!session) {
       console.log(`❌ Session ${sessionId} not found for mouse event forwarding`)
       return
     }
 
-    // Forward mouse event from client to host
+    // Forward mouse event from client to host (optimized - no verbose logging for mouse_move)
     if (senderWs !== session.host) {
       session.host.send(JSON.stringify({
         type: eventType,
@@ -286,7 +285,11 @@ class SignalingServer {
         clientId,
         mouseData
       }))
-      console.log(`✅ Mouse event ${eventType} forwarded to host`)
+      
+      // Only log clicks and important events, not every mouse move
+      if (eventType !== 'mouse_move') {
+        console.log(`✅ Mouse event ${eventType} forwarded to host`)
+      }
     }
   }
 

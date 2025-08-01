@@ -243,12 +243,13 @@ export class WebRTCManager {
       case 'mouse_click':
       case 'mouse_down':
       case 'mouse_up':
-        console.log(`🖱️ WebRTC: Received ${message.type} message, isHost: ${this.isHost}`, message.mouseData)
+        // Optimized: Only log non-move events to reduce console spam
+        if (message.type !== 'mouse_move') {
+          console.log(`🖱️ WebRTC: Received ${message.type} message`)
+        }
+        
         if (this.isHost && message.mouseData) {
-          console.log(`🖱️ WebRTC: Calling onMouseEvent callback`)
           this.onMouseEvent?.(message.mouseData)
-        } else {
-          console.log(`🖱️ WebRTC: Not forwarding - isHost: ${this.isHost}, hasMouseData: ${!!message.mouseData}`)
         }
         break
       
@@ -352,15 +353,17 @@ export class WebRTCManager {
 
   public sendMouseEvent(type: 'mouse_move' | 'mouse_click' | 'mouse_down' | 'mouse_up', x: number, y: number, button?: 'left' | 'right' | 'middle') {
     if (!this.isHost) {
-      console.log(`🖱️ CLIENT: Sending ${type} event: (${x.toFixed(3)}, ${y.toFixed(3)})${button ? ` button: ${button}` : ''}`)
+      // Only log non-move events for better performance
+      if (type !== 'mouse_move') {
+        console.log(`🖱️ CLIENT: Sending ${type} event: (${x.toFixed(3)}, ${y.toFixed(3)})${button ? ` button: ${button}` : ''}`)
+      }
+      
       this.sendSignalingMessage({
         type,
         sessionId: this.sessionId,
         clientId: this.clientId,
         mouseData: { x, y, button }
       })
-    } else {
-      console.log(`🖱️ CLIENT: Not sending mouse event - this is host`)
     }
   }
 
