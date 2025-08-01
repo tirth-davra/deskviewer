@@ -84,12 +84,23 @@ class SignalingServer {
         this.forwardIceCandidate(sessionId, clientId, data, ws)
         break
       
-      case 'leave_session':
-        this.leaveSession(sessionId, clientId)
-        break
-      
-      default:
-        console.warn('Unknown message type:', type)
+              case 'leave_session':
+          this.leaveSession(sessionId, clientId)
+          break
+        
+        case 'mouse_move':
+        case 'mouse_click':
+        case 'mouse_down':
+        case 'mouse_up':
+          this.forwardMouseEvent(sessionId, clientId, type, data, ws)
+          break
+        
+        case 'screen_resolution':
+          this.forwardScreenResolution(sessionId, clientId, data, ws)
+          break
+        
+        default:
+          console.warn('Unknown message type:', type)
     }
   }
 
@@ -257,6 +268,47 @@ class SignalingServer {
     }))
 
     console.log(`Client ${clientId} left session ${sessionId}`)
+  }
+
+  forwardMouseEvent(sessionId, clientId, eventType, mouseData, senderWs) {
+    console.log(`🖱️ Forwarding mouse event: ${eventType} for session: ${sessionId}`)
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      console.log(`❌ Session ${sessionId} not found for mouse event forwarding`)
+      return
+    }
+
+    // Forward mouse event from client to host
+    if (senderWs !== session.host) {
+      session.host.send(JSON.stringify({
+        type: eventType,
+        sessionId,
+        clientId,
+        mouseData
+      }))
+      console.log(`✅ Mouse event ${eventType} forwarded to host`)
+    }
+  }
+
+  forwardScreenResolution(sessionId, clientId, resolution, senderWs) {
+    console.log(`📐 Forwarding screen resolution for session: ${sessionId}`)
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      console.log(`❌ Session ${sessionId} not found for resolution forwarding`)
+      return
+    }
+
+    // Forward screen resolution from host to all clients
+    if (senderWs === session.host) {
+      session.clients.forEach((clientWs, cId) => {
+        clientWs.send(JSON.stringify({
+          type: 'screen_resolution',
+          sessionId,
+          resolution
+        }))
+        console.log(`✅ Screen resolution forwarded to client: ${cId}`)
+      })
+    }
   }
 
   handleDisconnection(ws) {

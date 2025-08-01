@@ -1,7 +1,8 @@
 import path from 'path'
-import { app, ipcMain, desktopCapturer } from 'electron'
+import { app, ipcMain, desktopCapturer, screen } from 'electron'
 import serve from 'electron-serve'
 import { createWindow } from './helpers'
+const robot = require('@jitsi/robotjs')
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -71,4 +72,60 @@ ipcMain.handle('get-display-media', async () => {
     thumbnailSize: { width: 1920, height: 1080 }
   })
   return sources
+})
+
+// Handle mouse control
+ipcMain.handle('mouse-move', async (event, x: number, y: number) => {
+  try {
+    robot.moveMouse(Math.round(x), Math.round(y))
+    return { success: true }
+  } catch (error) {
+    console.error('Mouse move error:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('mouse-click', async (event, x: number, y: number, button: string = 'left') => {
+  try {
+    robot.moveMouse(Math.round(x), Math.round(y))
+    robot.mouseClick(button === 'right' ? 'right' : 'left')
+    return { success: true }
+  } catch (error) {
+    console.error('Mouse click error:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('mouse-down', async (event, x: number, y: number, button: string = 'left') => {
+  try {
+    robot.moveMouse(Math.round(x), Math.round(y))
+    robot.mouseToggle('down', button === 'right' ? 'right' : 'left')
+    return { success: true }
+  } catch (error) {
+    console.error('Mouse down error:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('mouse-up', async (event, x: number, y: number, button: string = 'left') => {
+  try {
+    robot.moveMouse(Math.round(x), Math.round(y))
+    robot.mouseToggle('up', button === 'right' ? 'right' : 'left')
+    return { success: true }
+  } catch (error) {
+    console.error('Mouse up error:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+// Get screen resolution
+ipcMain.handle('get-screen-resolution', async () => {
+  try {
+    const primaryDisplay = screen.getPrimaryDisplay()
+    const { width, height } = primaryDisplay.size
+    return { width, height }
+  } catch (error) {
+    console.error('Get screen resolution error:', error)
+    return { width: 1920, height: 1080 } // fallback
+  }
 })

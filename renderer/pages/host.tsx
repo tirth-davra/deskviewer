@@ -54,8 +54,32 @@ export default function HostPage() {
         }
       })
 
+      // Set up mouse event handler for remote control
+      webrtcManagerRef.current.setOnMouseEvent(async (mouseData) => {
+        const resolution = await window.electronAPI.getScreenResolution()
+        
+        // Convert relative coordinates to absolute screen coordinates
+        const absoluteX = mouseData.x * resolution.width
+        const absoluteY = mouseData.y * resolution.height
+        
+        // Handle different mouse events
+        if (mouseData.button) {
+          // Mouse click events
+          await window.electronAPI.mouseClick(absoluteX, absoluteY, mouseData.button)
+        } else {
+          // Mouse move event
+          await window.electronAPI.mouseMove(absoluteX, absoluteY)
+        }
+      })
+
+      // Get and send screen resolution to clients
+      const resolution = await window.electronAPI.getScreenResolution()
+      
       // Start WebRTC host session
       await webrtcManagerRef.current.startHost(sessionId, stream)
+      
+      // Send screen resolution after connection is established
+      webrtcManagerRef.current.sendScreenResolution(resolution.width, resolution.height)
       
     } catch (error) {
       console.error('Error starting screen sharing:', error)

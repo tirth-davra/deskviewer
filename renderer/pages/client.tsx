@@ -11,6 +11,8 @@ export default function ClientPage() {
   const [viewMode, setViewMode] = useState<'windowed' | 'fullscreen'>('windowed')
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
   const [errorMessage, setErrorMessage] = useState('')
+  const [hostResolution, setHostResolution] = useState<{ width: number, height: number } | null>(null)
+  const [mouseControlEnabled, setMouseControlEnabled] = useState(true)
   const windowedVideoRef = useRef<HTMLVideoElement>(null)
   const fullscreenVideoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -104,6 +106,12 @@ export default function ClientPage() {
         }
       })
 
+      // Set up screen resolution handler
+      webrtcManagerRef.current.setOnScreenResolution((resolution) => {
+        console.log('Received host screen resolution:', resolution)
+        setHostResolution(resolution)
+      })
+
       // Start WebRTC client session
       await webrtcManagerRef.current.startClient(sessionId)
       
@@ -168,6 +176,60 @@ export default function ClientPage() {
     }
   }
 
+  // Mouse event handlers for remote control
+  const getRelativeMousePosition = (event: React.MouseEvent<HTMLVideoElement>) => {
+    const video = event.currentTarget
+    const rect = video.getBoundingClientRect()
+    
+    // Calculate relative position (0-1)
+    const relativeX = (event.clientX - rect.left) / rect.width
+    const relativeY = (event.clientY - rect.top) / rect.height
+    
+    // Clamp values between 0 and 1
+    return {
+      x: Math.max(0, Math.min(1, relativeX)),
+      y: Math.max(0, Math.min(1, relativeY))
+    }
+  }
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (!mouseControlEnabled || !webrtcManagerRef.current || !isConnected) return
+    
+    const { x, y } = getRelativeMousePosition(event)
+    webrtcManagerRef.current.sendMouseEvent('mouse_move', x, y)
+  }
+
+  const handleMouseDown = (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (!mouseControlEnabled || !webrtcManagerRef.current || !isConnected) return
+    
+    event.preventDefault()
+    const { x, y } = getRelativeMousePosition(event)
+    const button = event.button === 0 ? 'left' : event.button === 2 ? 'right' : 'middle'
+    webrtcManagerRef.current.sendMouseEvent('mouse_down', x, y, button)
+  }
+
+  const handleMouseUp = (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (!mouseControlEnabled || !webrtcManagerRef.current || !isConnected) return
+    
+    event.preventDefault()
+    const { x, y } = getRelativeMousePosition(event)
+    const button = event.button === 0 ? 'left' : event.button === 2 ? 'right' : 'middle'
+    webrtcManagerRef.current.sendMouseEvent('mouse_up', x, y, button)
+  }
+
+  const handleClick = (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (!mouseControlEnabled || !webrtcManagerRef.current || !isConnected) return
+    
+    event.preventDefault()
+    const { x, y } = getRelativeMousePosition(event)
+    const button = event.button === 0 ? 'left' : event.button === 2 ? 'right' : 'middle'
+    webrtcManagerRef.current.sendMouseEvent('mouse_click', x, y, button)
+  }
+
+  const handleContextMenu = (event: React.MouseEvent<HTMLVideoElement>) => {
+    event.preventDefault() // Prevent right-click context menu
+  }
+
   const disconnect = () => {
     // Exit fullscreen before disconnecting
     if (isFullscreen) {
@@ -177,6 +239,7 @@ export default function ClientPage() {
     setIsConnected(false)
     setConnectionStatus('disconnected')
     setErrorMessage('')
+    setHostResolution(null)
     
     // Stop video streams from both video elements
     const videoElements = [windowedVideoRef.current, fullscreenVideoRef.current]
@@ -428,7 +491,13 @@ export default function ClientPage() {
                     autoPlay
                     muted
                     playsInline
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain cursor-crosshair"
+                    onMouseMove={handleMouseMove}
+                    onMouseDown={handleMouseDown}
+                    onMouseUp={handleMouseUp}
+                    onClick={handleClick}
+                    onContextMenu={handleContextMenu}
+                    style={{ pointerEvents: mouseControlEnabled ? 'auto' : 'none' }}
                   />
                 )}
                 
@@ -494,13 +563,46 @@ export default function ClientPage() {
                 </div>
               )}
               
+              {/* Mouse Control Toggle */}
               {isConnected && (
-                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="text-green-700 font-medium">Connected to session: {sessionId}</span>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                      </svg>
+                      <span className="text-blue-700 font-medium">Mouse Control</span>
+                    </div>
+                    <button
+                      onClick={() => setMouseControlEnabled(!mouseControlEnabled)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        mouseControlEnabled ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          mouseControlEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isConnected && (
+                <div className="mt-4 space-y-3">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-green-700 font-medium">Connected to session: {sessionId}</span>
+                    </div>
+                    {hostResolution && (
+                      <div className="text-sm text-green-600">
+                        Host Resolution: {hostResolution.width} × {hostResolution.height}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -516,7 +618,13 @@ export default function ClientPage() {
             autoPlay
             muted
             playsInline
-            className={`${isFullscreen ? 'w-full h-full object-contain' : 'hidden'}`}
+            className={`${isFullscreen ? 'w-full h-full object-contain cursor-crosshair' : 'hidden'}`}
+            onMouseMove={handleMouseMove}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onClick={handleClick}
+            onContextMenu={handleContextMenu}
+            style={{ pointerEvents: mouseControlEnabled ? 'auto' : 'none' }}
           />
         )}
       </div>

@@ -3,6 +3,15 @@ export interface SignalingMessage {
   sessionId?: string
   clientId?: string
   data?: any
+  mouseData?: {
+    x: number
+    y: number
+    button?: 'left' | 'right' | 'middle'
+  }
+  resolution?: {
+    width: number
+    height: number
+  }
 }
 
 export class WebRTCManager {
@@ -13,6 +22,8 @@ export class WebRTCManager {
   private isHost: boolean = false
   private onStreamReceived?: (stream: MediaStream) => void
   private onConnectionStateChange?: (state: string) => void
+  private onMouseEvent?: (mouseData: { x: number, y: number, button?: string }) => void
+  private onScreenResolution?: (resolution: { width: number, height: number }) => void
 
   constructor() {
     this.setupPeerConnection()
@@ -219,13 +230,28 @@ export class WebRTCManager {
         this.handleIceCandidate(message.data || message.candidate)
         break
 
-      case 'host_disconnected':
+            case 'host_disconnected':
         console.log('Host disconnected')
         this.onConnectionStateChange?.('disconnected')
         break
-
+      
       case 'client_disconnected':
         console.log('Client disconnected:', message.clientId)
+        break
+      
+      case 'mouse_move':
+      case 'mouse_click':
+      case 'mouse_down':
+      case 'mouse_up':
+        if (this.isHost && message.mouseData) {
+          this.onMouseEvent?.(message.mouseData)
+        }
+        break
+      
+      case 'screen_resolution':
+        if (!this.isHost && message.resolution) {
+          this.onScreenResolution?.(message.resolution)
+        }
         break
 
       default:
@@ -310,6 +336,36 @@ export class WebRTCManager {
 
   public setOnConnectionStateChange(callback: (state: string) => void) {
     this.onConnectionStateChange = callback
+  }
+
+  public setOnMouseEvent(callback: (mouseData: { x: number, y: number, button?: string }) => void) {
+    this.onMouseEvent = callback
+  }
+
+  public setOnScreenResolution(callback: (resolution: { width: number, height: number }) => void) {
+    this.onScreenResolution = callback
+  }
+
+  public sendMouseEvent(type: 'mouse_move' | 'mouse_click' | 'mouse_down' | 'mouse_up', x: number, y: number, button?: 'left' | 'right' | 'middle') {
+    if (!this.isHost) {
+      this.sendSignalingMessage({
+        type,
+        sessionId: this.sessionId,
+        clientId: this.clientId,
+        mouseData: { x, y, button }
+      })
+    }
+  }
+
+  public sendScreenResolution(width: number, height: number) {
+    if (this.isHost) {
+      this.sendSignalingMessage({
+        type: 'screen_resolution',
+        sessionId: this.sessionId,
+        clientId: this.clientId,
+        resolution: { width, height }
+      })
+    }
   }
 
   public async createOffer(): Promise<RTCSessionDescriptionInit> {
