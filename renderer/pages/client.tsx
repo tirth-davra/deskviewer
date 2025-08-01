@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { WebRTCManager } from '../utils/webrtc'
@@ -15,6 +15,43 @@ export default function ClientPage() {
   const fullscreenVideoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const webrtcManagerRef = useRef<WebRTCManager | null>(null)
+
+  // Handle ESC key for exiting fullscreen
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isFullscreen) {
+        exitFullscreen()
+      }
+    }
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        setIsFullscreen(false)
+        // If we're in fullscreen mode, switch back to windowed
+        if (viewMode === 'fullscreen') {
+          setViewMode('windowed')
+          // Transfer stream back to windowed mode
+          if (fullscreenVideoRef.current && fullscreenVideoRef.current.srcObject) {
+            const stream = fullscreenVideoRef.current.srcObject as MediaStream
+            setTimeout(() => {
+              if (windowedVideoRef.current) {
+                windowedVideoRef.current.srcObject = stream
+                windowedVideoRef.current.play().catch(e => console.error('Video play failed:', e))
+              }
+            }, 100)
+          }
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+  }, [isFullscreen, viewMode])
 
   const connectToHost = async () => {
     if (!sessionId.trim()) {
@@ -101,6 +138,22 @@ export default function ClientPage() {
       if (document.fullscreenElement && isFullscreen) {
         await document.exitFullscreen()
         setIsFullscreen(false)
+        
+        // If we're in fullscreen mode, switch back to windowed and transfer stream
+        if (viewMode === 'fullscreen') {
+          setViewMode('windowed')
+          
+          // Transfer stream from fullscreen to windowed video element
+          if (fullscreenVideoRef.current && fullscreenVideoRef.current.srcObject) {
+            const stream = fullscreenVideoRef.current.srcObject as MediaStream
+            setTimeout(() => {
+              if (windowedVideoRef.current) {
+                windowedVideoRef.current.srcObject = stream
+                windowedVideoRef.current.play().catch(e => console.error('Video play failed:', e))
+              }
+            }, 100)
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to exit fullscreen:', error)
@@ -151,22 +204,25 @@ export default function ClientPage() {
       <div ref={containerRef} className={`${isFullscreen ? 'fixed inset-0 bg-black z-50' : 'min-h-screen bg-gradient-to-br from-green-50 to-emerald-100'}`}>
         {/* Fullscreen Controls Overlay */}
         {isFullscreen && isConnected && (
-          <div className="absolute top-4 right-4 z-60 flex space-x-2">
+          <div 
+            className="fixed top-4 right-4 flex space-x-2"
+            style={{ zIndex: 9999 }}
+          >
             <button
               onClick={toggleFullscreen}
-              className="bg-black bg-opacity-50 text-white p-2 rounded-lg hover:bg-opacity-70 transition-opacity"
+              className="bg-black bg-opacity-70 hover:bg-opacity-90 text-white p-3 rounded-lg transition-all duration-200 shadow-lg"
               title="Exit Fullscreen (ESC)"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
             <button
               onClick={disconnect}
-              className="bg-red-600 bg-opacity-80 text-white p-2 rounded-lg hover:bg-opacity-100 transition-opacity"
+              className="bg-red-600 bg-opacity-80 hover:bg-opacity-100 text-white p-3 rounded-lg transition-all duration-200 shadow-lg"
               title="Disconnect"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
               </svg>
             </button>
@@ -403,7 +459,23 @@ export default function ClientPage() {
                 <div className="mt-4 space-y-3">
                   {viewMode === 'windowed' && !isFullscreen && (
                     <button
-                      onClick={enterFullscreen}
+                      onClick={() => {
+                        // Switch to fullscreen mode and transfer video stream
+                        setViewMode('fullscreen')
+                        
+                        // Transfer stream from windowed to fullscreen video element
+                        if (windowedVideoRef.current && windowedVideoRef.current.srcObject) {
+                          const stream = windowedVideoRef.current.srcObject as MediaStream
+                          setTimeout(() => {
+                            if (fullscreenVideoRef.current) {
+                              fullscreenVideoRef.current.srcObject = stream
+                              fullscreenVideoRef.current.play().then(() => {
+                                enterFullscreen()
+                              }).catch(e => console.error('Video play failed:', e))
+                            }
+                          }, 100)
+                        }
+                      }}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
