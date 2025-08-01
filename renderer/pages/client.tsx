@@ -348,6 +348,7 @@ export default function ClientPage() {
               )}
             </div>
           </div>
+          </div>
         )}
 
         {/* Always render video element for fullscreen */}
