@@ -1,34 +1,19 @@
-import { WebSocketServer, WebSocket } from 'ws'
-import { v4 as uuidv4 } from 'uuid'
-
-interface Session {
-  id: string
-  host: WebSocket
-  clients: Map<string, WebSocket>
-  createdAt: Date
-}
+const { WebSocketServer } = require('ws')
 
 class SignalingServer {
-  private wss: WebSocketServer
-  private sessions: Map<string, Session> = new Map()
-
-  constructor(port: number = 8080) {
-    try {
-      this.wss = new WebSocketServer({ port })
-      this.setupEventHandlers()
-      console.log(`✅ WebSocket signaling server started on port ${port}`)
-      console.log(`📡 Server is ready to accept connections`)
-    } catch (error) {
-      console.log(`⚠️  WebSocket server already running on port ${port}`)
-      console.log(`📡 Using existing server instance`)
-    }
+  constructor(port = 8080) {
+    this.wss = new WebSocketServer({ port })
+    this.sessions = new Map()
+    this.setupEventHandlers()
+    console.log(`✅ WebSocket signaling server started on port ${port}`)
+    console.log(`📡 Server is ready to accept connections`)
   }
 
-  private setupEventHandlers() {
-    this.wss.on('connection', (ws: WebSocket) => {
+  setupEventHandlers() {
+    this.wss.on('connection', (ws) => {
       console.log('🔌 New WebSocket connection established')
       
-      ws.on('message', (data: Buffer) => {
+      ws.on('message', (data) => {
         try {
           const message = JSON.parse(data.toString())
           console.log('📨 Received message:', message.type, 'from session:', message.sessionId)
@@ -50,7 +35,7 @@ class SignalingServer {
     })
   }
 
-  private handleMessage(ws: WebSocket, message: any) {
+  handleMessage(ws, message) {
     const { type, sessionId, clientId, data } = message
 
     console.log(`📨 Processing message: ${type} for session: ${sessionId}`)
@@ -87,7 +72,7 @@ class SignalingServer {
     }
   }
 
-  private createSession(ws: WebSocket, sessionId: string) {
+  createSession(ws, sessionId) {
     console.log(`🔄 Attempting to create session: ${sessionId}`)
     
     if (this.sessions.has(sessionId)) {
@@ -99,7 +84,7 @@ class SignalingServer {
       return
     }
 
-    const session: Session = {
+    const session = {
       id: sessionId,
       host: ws,
       clients: new Map(),
@@ -116,7 +101,7 @@ class SignalingServer {
     console.log(`✅ Session created: ${sessionId}`)
   }
 
-  private joinSession(ws: WebSocket, sessionId: string, clientId: string) {
+  joinSession(ws, sessionId, clientId) {
     console.log(`🔄 Attempting to join session: ${sessionId} with client: ${clientId}`)
     console.log(`📊 Available sessions: ${Array.from(this.sessions.keys()).join(', ')}`)
     
@@ -152,7 +137,7 @@ class SignalingServer {
     console.log(`✅ Client ${clientId} joined session ${sessionId}`)
   }
 
-  private forwardOffer(sessionId: string, clientId: string, offer: any) {
+  forwardOffer(sessionId, clientId, offer) {
     const session = this.sessions.get(sessionId)
     if (!session) return
 
@@ -166,7 +151,7 @@ class SignalingServer {
     }
   }
 
-  private forwardAnswer(sessionId: string, clientId: string, answer: any) {
+  forwardAnswer(sessionId, clientId, answer) {
     const session = this.sessions.get(sessionId)
     if (!session) return
 
@@ -178,7 +163,7 @@ class SignalingServer {
     }))
   }
 
-  private forwardIceCandidate(sessionId: string, clientId: string, candidate: any) {
+  forwardIceCandidate(sessionId, clientId, candidate) {
     const session = this.sessions.get(sessionId)
     if (!session) return
 
@@ -200,7 +185,7 @@ class SignalingServer {
     }
   }
 
-  private leaveSession(sessionId: string, clientId: string) {
+  leaveSession(sessionId, clientId) {
     const session = this.sessions.get(sessionId)
     if (!session) return
 
@@ -216,7 +201,7 @@ class SignalingServer {
     console.log(`Client ${clientId} left session ${sessionId}`)
   }
 
-  private handleDisconnection(ws: WebSocket) {
+  handleDisconnection(ws) {
     // Find and remove the disconnected client from all sessions
     for (const [sessionId, session] of this.sessions.entries()) {
       // Check if it's the host
@@ -253,20 +238,20 @@ class SignalingServer {
     }
   }
 
-  public getSessionInfo(sessionId: string) {
-    const session = this.sessions.get(sessionId)
-    if (!session) return null
-
-    return {
-      id: session.id,
-      clientCount: session.clients.size,
-      createdAt: session.createdAt
-    }
-  }
-
-  public close() {
+  close() {
     this.wss.close()
   }
 }
 
-export default SignalingServer 
+// Start the server
+const server = new SignalingServer(8080)
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n🛑 Shutting down WebSocket server...')
+  server.close()
+  process.exit(0)
+})
+
+console.log('🚀 WebSocket signaling server is running on port 8080')
+console.log('💡 Press Ctrl+C to stop the server') 

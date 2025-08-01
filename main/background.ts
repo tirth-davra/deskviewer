@@ -2,7 +2,6 @@ import path from 'path'
 import { app, ipcMain, desktopCapturer } from 'electron'
 import serve from 'electron-serve'
 import { createWindow } from './helpers'
-import SignalingServer from './websocket-server'
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -11,9 +10,6 @@ if (isProd) {
 } else {
   app.setPath('userData', `${app.getPath('userData')} (development)`)
 }
-
-// Start WebSocket signaling server
-const signalingServer = new SignalingServer(8080)
 
 ;(async () => {
   await app.whenReady()
@@ -54,7 +50,6 @@ const signalingServer = new SignalingServer(8080)
 })()
 
 app.on('window-all-closed', () => {
-  signalingServer.close()
   app.quit()
 })
 
