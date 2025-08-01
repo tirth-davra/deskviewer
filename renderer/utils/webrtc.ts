@@ -72,19 +72,21 @@ export class WebRTCManager {
 
   private async connectWebSocket(): Promise<void> {
     return new Promise((resolve, reject) => {
+      console.log('Attempting to connect to WebSocket server...')
       this.ws = new WebSocket('ws://localhost:8080')
 
       this.ws.onopen = () => {
-        console.log('WebSocket connected')
+        console.log('WebSocket connected successfully')
         resolve()
       }
 
       this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error)
-        reject(error)
+        console.error('WebSocket connection error:', error)
+        reject(new Error('Failed to connect to WebSocket server. Make sure the app is running.'))
       }
 
       this.ws.onmessage = (event) => {
+        console.log('Received WebSocket message:', event.data)
         this.handleSignalingMessage(JSON.parse(event.data))
       }
 
@@ -101,6 +103,7 @@ export class WebRTCManager {
         return
       }
 
+      console.log('Creating session with ID:', this.sessionId)
       this.sendSignalingMessage({
         type: 'create_session',
         sessionId: this.sessionId
@@ -108,10 +111,14 @@ export class WebRTCManager {
 
       const handleMessage = (event: MessageEvent) => {
         const message = JSON.parse(event.data)
+        console.log('Session creation response:', message)
+        
         if (message.type === 'session_created' && message.sessionId === this.sessionId) {
+          console.log('Session created successfully')
           this.ws?.removeEventListener('message', handleMessage)
           resolve()
         } else if (message.type === 'session_error') {
+          console.error('Session creation failed:', message.error)
           this.ws?.removeEventListener('message', handleMessage)
           reject(new Error(message.error))
         }
@@ -128,6 +135,7 @@ export class WebRTCManager {
         return
       }
 
+      console.log('Joining session with ID:', this.sessionId, 'Client ID:', this.clientId)
       this.sendSignalingMessage({
         type: 'join_session',
         sessionId: this.sessionId,
@@ -136,10 +144,14 @@ export class WebRTCManager {
 
       const handleMessage = (event: MessageEvent) => {
         const message = JSON.parse(event.data)
+        console.log('Session join response:', message)
+        
         if (message.type === 'session_joined' && message.sessionId === this.sessionId) {
+          console.log('Successfully joined session')
           this.ws?.removeEventListener('message', handleMessage)
           resolve()
         } else if (message.type === 'session_error') {
+          console.error('Session join failed:', message.error)
           this.ws?.removeEventListener('message', handleMessage)
           reject(new Error(message.error))
         }
@@ -169,6 +181,11 @@ export class WebRTCManager {
 
       case 'client_left':
         console.log('Client left:', message.clientId)
+        break
+
+      case 'session_error':
+        console.error('Session error:', message.data)
+        throw new Error(message.data?.error || 'Session error occurred')
         break
 
       case 'offer':

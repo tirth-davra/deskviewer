@@ -15,28 +15,31 @@ class SignalingServer {
   constructor(port: number = 8080) {
     this.wss = new WebSocketServer({ port })
     this.setupEventHandlers()
-    console.log(`WebSocket signaling server started on port ${port}`)
+    console.log(`✅ WebSocket signaling server started on port ${port}`)
+    console.log(`📡 Server is ready to accept connections`)
   }
 
   private setupEventHandlers() {
     this.wss.on('connection', (ws: WebSocket) => {
-      console.log('New WebSocket connection established')
+      console.log('🔌 New WebSocket connection established')
       
       ws.on('message', (data: Buffer) => {
         try {
           const message = JSON.parse(data.toString())
+          console.log('📨 Received message:', message.type, 'from session:', message.sessionId)
           this.handleMessage(ws, message)
         } catch (error) {
-          console.error('Error parsing message:', error)
+          console.error('❌ Error parsing message:', error)
         }
       })
 
       ws.on('close', () => {
+        console.log('🔌 WebSocket connection closed')
         this.handleDisconnection(ws)
       })
 
       ws.on('error', (error) => {
-        console.error('WebSocket error:', error)
+        console.error('❌ WebSocket error:', error)
         this.handleDisconnection(ws)
       })
     })
@@ -76,7 +79,10 @@ class SignalingServer {
   }
 
   private createSession(ws: WebSocket, sessionId: string) {
+    console.log(`🔄 Attempting to create session: ${sessionId}`)
+    
     if (this.sessions.has(sessionId)) {
+      console.log(`❌ Session ${sessionId} already exists`)
       ws.send(JSON.stringify({
         type: 'session_error',
         error: 'Session already exists'
@@ -98,13 +104,16 @@ class SignalingServer {
       sessionId
     }))
 
-    console.log(`Session created: ${sessionId}`)
+    console.log(`✅ Session created: ${sessionId}`)
   }
 
   private joinSession(ws: WebSocket, sessionId: string, clientId: string) {
+    console.log(`🔄 Attempting to join session: ${sessionId} with client: ${clientId}`)
+    
     const session = this.sessions.get(sessionId)
     
     if (!session) {
+      console.log(`❌ Session ${sessionId} not found`)
       ws.send(JSON.stringify({
         type: 'session_error',
         error: 'Session not found'
@@ -128,7 +137,7 @@ class SignalingServer {
       clientId
     }))
 
-    console.log(`Client ${clientId} joined session ${sessionId}`)
+    console.log(`✅ Client ${clientId} joined session ${sessionId}`)
   }
 
   private forwardOffer(sessionId: string, clientId: string, offer: any) {
