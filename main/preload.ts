@@ -13,8 +13,14 @@ const handler = {
       ipcRenderer.removeListener(channel, subscription)
     }
   },
+  invoke(channel: string, value?: unknown) {
+    return ipcRenderer.invoke(channel, value)
+  },
 }
 
 contextBridge.exposeInMainWorld('ipc', handler)
+contextBridge.exposeInMainWorld('electronAPI', {
+  getDisplayMedia: () => ipcRenderer.invoke('get-display-media')
+})
 
 export type IpcHandler = typeof handler

@@ -29,12 +29,16 @@ export default function HostPage() {
       setIsSharing(true)
       setConnectionStatus('waiting')
       
-      // Request screen capture
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      // Request screen capture using Electron's desktopCapturer
+      const sources = await window.electronAPI.getDisplayMedia()
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
         video: {
-          cursor: 'always'
-        },
-        audio: false
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: sources[0].id
+          }
+        } as any
       })
 
       if (videoRef.current) {
@@ -140,12 +144,12 @@ export default function HostPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Connection Status
                 </label>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 text-black">
                   <div className={`w-3 h-3 rounded-full ${
                     connectionStatus === 'connected' ? 'bg-green-500' :
                     connectionStatus === 'waiting' ? 'bg-yellow-500' : 'bg-red-500'
                   }`}></div>
-                  <span className="font-medium">
+                  <span className="font-medium text-black">
                     {connectionStatus === 'connected' ? 'Connected' :
                      connectionStatus === 'waiting' ? 'Waiting for connection' : 'Disconnected'}
                   </span>

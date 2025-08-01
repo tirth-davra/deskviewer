@@ -107,7 +107,7 @@ export default function ClientPage() {
                   value={sessionId}
                   onChange={(e) => setSessionId(e.target.value.toUpperCase())}
                   placeholder="Enter session ID (e.g., ABC123)"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-lg"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black text-lg"
                   maxLength={6}
                   disabled={isConnected}
                 />
@@ -121,7 +121,7 @@ export default function ClientPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Connection Status
                 </label>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 text-black">
                   <div className={`w-3 h-3 rounded-full ${
                     connectionStatus === 'connected' ? 'bg-green-500' :
                     connectionStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'

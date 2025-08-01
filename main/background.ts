@@ -1,5 +1,5 @@
 import path from 'path'
-import { app, ipcMain } from 'electron'
+import { app, ipcMain, desktopCapturer } from 'electron'
 import serve from 'electron-serve'
 import { createWindow } from './helpers'
 import SignalingServer from './websocket-server'
@@ -25,6 +25,8 @@ const signalingServer = new SignalingServer(8080)
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: false,
+      allowRunningInsecureContent: true,
     },
   })
 
@@ -58,4 +60,13 @@ app.on('window-all-closed', () => {
 
 ipcMain.on('message', async (event, arg) => {
   event.reply('message', `${arg} World!`)
+})
+
+// Handle screen capture permission
+ipcMain.handle('get-display-media', async () => {
+  const sources = await desktopCapturer.getSources({
+    types: ['screen'],
+    thumbnailSize: { width: 1920, height: 1080 }
+  })
+  return sources
 })
