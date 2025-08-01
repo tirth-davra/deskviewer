@@ -92,11 +92,11 @@ class SignalingServer {
         case 'mouse_click':
         case 'mouse_down':
         case 'mouse_up':
-          this.forwardMouseEvent(sessionId, clientId, type, data, ws)
+          this.forwardMouseEvent(sessionId, clientId, type, message.mouseData, ws)
           break
         
         case 'screen_resolution':
-          this.forwardScreenResolution(sessionId, clientId, data, ws)
+          this.forwardScreenResolution(sessionId, clientId, message.resolution, ws)
           break
         
         default:
