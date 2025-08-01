@@ -56,19 +56,33 @@ export default function HostPage() {
 
       // Set up mouse event handler for remote control
       webrtcManagerRef.current.setOnMouseEvent(async (mouseData) => {
+        console.log('🖱️ HOST: Received mouse event:', mouseData)
+        
         const resolution = await window.electronAPI.getScreenResolution()
+        console.log('📐 HOST: Screen resolution:', resolution)
         
         // Convert relative coordinates to absolute screen coordinates
-        const absoluteX = mouseData.x * resolution.width
-        const absoluteY = mouseData.y * resolution.height
+        const absoluteX = Math.round(mouseData.x * resolution.width)
+        const absoluteY = Math.round(mouseData.y * resolution.height)
         
-        // Handle different mouse events
-        if (mouseData.button) {
-          // Mouse click events
-          await window.electronAPI.mouseClick(absoluteX, absoluteY, mouseData.button)
-        } else {
-          // Mouse move event
-          await window.electronAPI.mouseMove(absoluteX, absoluteY)
+        console.log(`🎯 HOST: Converting (${mouseData.x.toFixed(3)}, ${mouseData.y.toFixed(3)}) → (${absoluteX}, ${absoluteY})`)
+        
+        try {
+          // Handle different mouse events
+          if (mouseData.button) {
+            // Mouse click events
+            console.log(`🖱️ HOST: Performing ${mouseData.button} click at (${absoluteX}, ${absoluteY})`)
+            const result = await window.electronAPI.mouseClick(absoluteX, absoluteY, mouseData.button)
+            console.log('🖱️ HOST: Click result:', result)
+          } else {
+            // Mouse move event
+            const result = await window.electronAPI.mouseMove(absoluteX, absoluteY)
+            if (!result.success) {
+              console.error('❌ HOST: Mouse move failed:', result.error)
+            }
+          }
+        } catch (error) {
+          console.error('❌ HOST: Mouse control error:', error)
         }
       })
 
@@ -269,6 +283,29 @@ export default function HostPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Mouse Control Test */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h4 className="font-medium text-yellow-800 mb-3">Mouse Control Test</h4>
+                  <button
+                    onClick={async () => {
+                      console.log('🧪 Testing robotjs...')
+                      const result = await window.electronAPI.testRobotjs()
+                      console.log('🧪 Test result:', result)
+                      if (result.success) {
+                        alert('✅ robotjs is working! Mouse moved successfully.')
+                      } else {
+                        alert(`❌ robotjs failed: ${result.error}`)
+                      }
+                    }}
+                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+                  >
+                    Test Mouse Control
+                  </button>
+                  <p className="text-xs text-yellow-600 mt-2">
+                    Click to test if mouse control is working on this computer
+                  </p>
+                </div>
               </div>
             </div>
           </div>

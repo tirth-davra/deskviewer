@@ -77,21 +77,40 @@ ipcMain.handle('get-display-media', async () => {
 // Handle mouse control
 ipcMain.handle('mouse-move', async (event, x: number, y: number) => {
   try {
+    console.log(`🖱️ MAIN: Moving mouse to (${x}, ${y})`)
+    
+    // Test if robotjs is working
+    const currentPos = robot.getMousePos()
+    console.log(`🖱️ MAIN: Current mouse position: (${currentPos.x}, ${currentPos.y})`)
+    
     robot.moveMouse(Math.round(x), Math.round(y))
-    return { success: true }
+    
+    // Verify the move worked
+    const newPos = robot.getMousePos()
+    console.log(`🖱️ MAIN: New mouse position: (${newPos.x}, ${newPos.y})`)
+    
+    return { success: true, from: currentPos, to: newPos }
   } catch (error) {
-    console.error('Mouse move error:', error)
+    console.error('❌ MAIN: Mouse move error:', error)
     return { success: false, error: error.message }
   }
 })
 
 ipcMain.handle('mouse-click', async (event, x: number, y: number, button: string = 'left') => {
   try {
+    console.log(`🖱️ MAIN: Clicking ${button} at (${x}, ${y})`)
+    
     robot.moveMouse(Math.round(x), Math.round(y))
+    
+    // Add small delay to ensure mouse position is set
+    await new Promise(resolve => setTimeout(resolve, 10))
+    
     robot.mouseClick(button === 'right' ? 'right' : 'left')
+    
+    console.log(`✅ MAIN: ${button} click completed at (${x}, ${y})`)
     return { success: true }
   } catch (error) {
-    console.error('Mouse click error:', error)
+    console.error('❌ MAIN: Mouse click error:', error)
     return { success: false, error: error.message }
   }
 })
@@ -127,5 +146,39 @@ ipcMain.handle('get-screen-resolution', async () => {
   } catch (error) {
     console.error('Get screen resolution error:', error)
     return { width: 1920, height: 1080 } // fallback
+  }
+})
+
+// Test robotjs functionality
+ipcMain.handle('test-robotjs', async () => {
+  try {
+    console.log('🧪 MAIN: Testing robotjs...')
+    
+    // Test getting mouse position
+    const pos = robot.getMousePos()
+    console.log(`🖱️ MAIN: Current mouse position: (${pos.x}, ${pos.y})`)
+    
+    // Test moving mouse slightly
+    const testX = pos.x + 10
+    const testY = pos.y + 10
+    
+    robot.moveMouse(testX, testY)
+    
+    // Verify move
+    const newPos = robot.getMousePos()
+    console.log(`🖱️ MAIN: After move: (${newPos.x}, ${newPos.y})`)
+    
+    // Move back
+    robot.moveMouse(pos.x, pos.y)
+    
+    return { 
+      success: true, 
+      originalPos: pos, 
+      testPos: { x: testX, y: testY },
+      actualPos: newPos 
+    }
+  } catch (error) {
+    console.error('❌ MAIN: robotjs test failed:', error)
+    return { success: false, error: error.message }
   }
 })

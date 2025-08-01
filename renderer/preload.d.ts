@@ -7,6 +7,7 @@ export interface ElectronAPI {
   mouseDown(x: number, y: number, button?: string): Promise<{ success: boolean, error?: string }>
   mouseUp(x: number, y: number, button?: string): Promise<{ success: boolean, error?: string }>
   getScreenResolution(): Promise<{ width: number, height: number }>
+  testRobotjs(): Promise<{ success: boolean, error?: string, originalPos?: any, testPos?: any, actualPos?: any }>
 }
 
 declare global {

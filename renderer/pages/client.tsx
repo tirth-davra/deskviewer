@@ -17,6 +17,7 @@ export default function ClientPage() {
   const fullscreenVideoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const webrtcManagerRef = useRef<WebRTCManager | null>(null)
+  const lastMouseMoveRef = useRef<number>(0)
 
   // Handle ESC key for exiting fullscreen
   useEffect(() => {
@@ -194,6 +195,11 @@ export default function ClientPage() {
 
   const handleMouseMove = (event: React.MouseEvent<HTMLVideoElement>) => {
     if (!mouseControlEnabled || !webrtcManagerRef.current || !isConnected) return
+    
+    // Throttle mouse move events to prevent spam (max 30 FPS)
+    const now = Date.now()
+    if (now - lastMouseMoveRef.current < 33) return
+    lastMouseMoveRef.current = now
     
     const { x, y } = getRelativeMousePosition(event)
     webrtcManagerRef.current.sendMouseEvent('mouse_move', x, y)
@@ -586,6 +592,20 @@ export default function ClientPage() {
                       />
                     </button>
                   </div>
+                  
+                  {/* Debug Test Button */}
+                  <button
+                    onClick={() => {
+                      console.log('🧪 CLIENT: Testing mouse event send...')
+                      if (webrtcManagerRef.current) {
+                        webrtcManagerRef.current.sendMouseEvent('mouse_click', 0.5, 0.5, 'left')
+                        console.log('🧪 CLIENT: Test click sent to center (0.5, 0.5)')
+                      }
+                    }}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+                  >
+                    🧪 Test Mouse Send
+                  </button>
                 </div>
               )}
 
