@@ -115,6 +115,23 @@ export default function HostPage() {
             <div className="bg-white rounded-2xl shadow-xl p-8">
               <h2 className="text-2xl font-semibold text-gray-800 mb-6">Session Information</h2>
               
+              {/* Instructions */}
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-green-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 className="font-medium text-green-800 mb-1">How to share your screen:</h3>
+                    <ol className="text-sm text-green-700 space-y-1">
+                      <li>1. Click "Start Sharing" to begin screen capture</li>
+                      <li>2. Share the session ID with others</li>
+                      <li>3. Wait for clients to connect</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+              
               {/* Session ID */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">

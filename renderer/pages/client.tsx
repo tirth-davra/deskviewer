@@ -51,7 +51,13 @@ export default function ClientPage() {
     } catch (error) {
       console.error('Error connecting to host:', error)
       setConnectionStatus('disconnected')
-      setErrorMessage('Failed to connect to host. Please check the session ID.')
+      
+      // Provide more specific error messages
+      if (error instanceof Error && error.message.includes('Session not found')) {
+        setErrorMessage('Session not found. Make sure the host has started sharing and the session ID is correct.')
+      } else {
+        setErrorMessage('Failed to connect to host. Please check the session ID and try again.')
+      }
     }
   }
 
@@ -96,6 +102,23 @@ export default function ClientPage() {
             {/* Left Panel - Connection Controls */}
             <div className="bg-white rounded-2xl shadow-xl p-8">
               <h2 className="text-2xl font-semibold text-gray-800 mb-6">Connect to Host</h2>
+              
+              {/* Instructions */}
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 className="font-medium text-blue-800 mb-1">How to connect:</h3>
+                    <ol className="text-sm text-blue-700 space-y-1">
+                      <li>1. Ask the host to start sharing their screen</li>
+                      <li>2. Get the session ID from the host</li>
+                      <li>3. Enter the session ID below and click "Connect"</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
               
               {/* Session ID Input */}
               <div className="mb-6">

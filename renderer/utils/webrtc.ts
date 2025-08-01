@@ -185,7 +185,7 @@ export class WebRTCManager {
 
       case 'session_error':
         console.error('Session error:', message.data)
-        throw new Error(message.data?.error || 'Session error occurred')
+        // Don't throw here, let the calling code handle the error
         break
 
       case 'offer':
