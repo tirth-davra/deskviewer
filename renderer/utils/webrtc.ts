@@ -83,11 +83,18 @@ export class WebRTCManager {
 
   private async connectWebSocket(): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Check if HOST_IP environment variable is set, otherwise use localhost
-      const hostIP = process.env.HOST_IP || 'localhost'
+      // Try multiple ways to get HOST_IP
+      const hostIP = process.env.HOST_IP || 
+                     (window as any).HOST_IP || 
+                     localStorage.getItem('HOST_IP') || 
+                     'localhost'
       const wsUrl = `ws://${hostIP}:8080`
       
-      console.log('Attempting to connect to WebSocket server:', wsUrl)
+      console.log('HOST_IP from env:', process.env.HOST_IP)
+      console.log('HOST_IP from window:', (window as any).HOST_IP)
+      console.log('HOST_IP from localStorage:', localStorage.getItem('HOST_IP'))
+      console.log('Final WebSocket URL:', wsUrl)
+      
       this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = () => {
