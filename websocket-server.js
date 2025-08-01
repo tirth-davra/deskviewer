@@ -60,7 +60,7 @@ class SignalingServer {
         break
       
       case 'ice_candidate':
-        this.forwardIceCandidate(sessionId, clientId, data)
+        this.forwardIceCandidate(sessionId, clientId, data, ws)
         break
       
       case 'leave_session':
@@ -138,50 +138,87 @@ class SignalingServer {
   }
 
   forwardOffer(sessionId, clientId, offer) {
+    console.log(`📤 Forwarding offer from host to client: ${clientId}`)
     const session = this.sessions.get(sessionId)
-    if (!session) return
+    if (!session) {
+      console.log(`❌ Session ${sessionId} not found for offer forwarding`)
+      return
+    }
 
     const targetWs = session.clients.get(clientId)
     if (targetWs) {
       targetWs.send(JSON.stringify({
         type: 'offer',
         sessionId,
-        offer
+        data: offer
       }))
+      console.log(`✅ Offer forwarded to client: ${clientId}`)
+    } else {
+      console.log(`❌ Client ${clientId} not found in session ${sessionId}`)
     }
   }
 
   forwardAnswer(sessionId, clientId, answer) {
+    console.log(`📤 Forwarding answer from client ${clientId} to host`)
     const session = this.sessions.get(sessionId)
-    if (!session) return
+    if (!session) {
+      console.log(`❌ Session ${sessionId} not found for answer forwarding`)
+      return
+    }
 
     session.host.send(JSON.stringify({
       type: 'answer',
       sessionId,
       clientId,
-      answer
+      data: answer
     }))
+    console.log(`✅ Answer forwarded to host from client: ${clientId}`)
   }
 
-  forwardIceCandidate(sessionId, clientId, candidate) {
+  forwardIceCandidate(sessionId, clientId, candidate, senderWs) {
+    console.log(`📤 Forwarding ICE candidate for session: ${sessionId}, clientId: ${clientId}`)
     const session = this.sessions.get(sessionId)
-    if (!session) return
+    if (!session) {
+      console.log(`❌ Session ${sessionId} not found for ICE candidate forwarding`)
+      return
+    }
 
-    const targetWs = session.clients.get(clientId)
-    if (targetWs) {
-      targetWs.send(JSON.stringify({
-        type: 'ice_candidate',
-        sessionId,
-        candidate
-      }))
+    // Check if sender is the host
+    if (senderWs === session.host) {
+      console.log(`📤 ICE candidate from HOST to client: ${clientId}`)
+      // Forward from host to specific client
+      if (clientId) {
+        const targetWs = session.clients.get(clientId)
+        if (targetWs) {
+          targetWs.send(JSON.stringify({
+            type: 'ice_candidate',
+            sessionId,
+            data: candidate
+          }))
+          console.log(`✅ ICE candidate forwarded to client: ${clientId}`)
+        } else {
+          console.log(`❌ Client ${clientId} not found in session ${sessionId}`)
+        }
+      } else {
+        // Forward to all clients if no specific clientId
+        session.clients.forEach((clientWs, cId) => {
+          clientWs.send(JSON.stringify({
+            type: 'ice_candidate',
+            sessionId,
+            data: candidate
+          }))
+          console.log(`✅ ICE candidate forwarded to client: ${cId}`)
+        })
+      }
     } else {
-      // Forward to host if client not found
+      console.log(`📤 ICE candidate from CLIENT to HOST`)
+      // Forward from client to host
       session.host.send(JSON.stringify({
         type: 'ice_candidate',
         sessionId,
-        clientId,
-        candidate
+        data: candidate
       }))
+      console.log(`✅ ICE candidate forwarded to host`)
     }
   }
 

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeskViewer - Web Client</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">DeskViewer Web Client</h1>
+            <p class="text-gray-600">Connect to a host and view their screen</p>
+        </div>
+
+        <div class="max-w-2xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Connect to Host</h2>
+                
+                <!-- Instructions -->
+                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-start space-x-3">
+                        <svg class="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                            <h3 class="font-medium text-blue-800 mb-1">How to connect:</h3>
+                            <ol class="text-sm text-blue-700 space-y-1">
+                                <li>1. Start the Electron app and go to Host mode</li>
+                                <li>2. Click "Start Sharing" in the Electron app</li>
+                                <li>3. Copy the session ID from the Electron app</li>
+                                <li>4. Enter the session ID below and click "Connect"</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Session ID Input -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Host Session ID
+                    </label>
+                    <input
+                        type="text"
+                        id="sessionId"
+                        placeholder="Enter session ID (e.g., ABC123)"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black text-lg"
+                        maxlength="6"
+                    />
+                    <p class="text-sm text-gray-600 mt-2">
+                        Enter the session ID provided by the host
+                    </p>
+                </div>
+
+                <!-- Connection Status -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Connection Status
+                    </label>
+                    <div class="flex items-center space-x-3 text-black">
+                        <div id="statusIndicator" class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <span id="statusText" class="font-medium">Disconnected</span>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg hidden">
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span id="errorText" class="text-red-700 font-medium"></span>
+                    </div>
+                </div>
+
+                <!-- Connect Button -->
+                <div class="mb-6">
+                    <button
+                        id="connectBtn"
+                        class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-3"
+                    >
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span>Connect</span>
+                    </button>
+                </div>
+
+                <!-- Disconnect Button -->
+                <div class="mb-6">
+                    <button
+                        id="disconnectBtn"
+                        class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-3 hidden"
+                    >
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span>Disconnect</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Video Display -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 mt-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Remote Screen</h2>
+                
+                <div class="bg-gray-100 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
+                    <video
+                        id="remoteVideo"
+                        autoplay
+                        muted
+                        playsinline
+                        class="w-full h-full object-contain hidden"
+                        style="background: black;"
+                    ></video>
+                    <div id="videoPlaceholder" class="text-center">
+                        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <p class="text-gray-500 text-lg">No video stream</p>
+                        <p class="text-gray-400 text-sm">Connect to a host to view their screen</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class WebClientManager {
+            constructor() {
+                this.ws = null;
+                this.peerConnection = null;
+                this.sessionId = '';
+                this.clientId = 'webclient_' + Math.random().toString(36).substr(2, 9);
+                this.isConnected = false;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+            }
+
+            initializeElements() {
+                this.sessionIdInput = document.getElementById('sessionId');
+                this.connectBtn = document.getElementById('connectBtn');
+                this.disconnectBtn = document.getElementById('disconnectBtn');
+                this.statusIndicator = document.getElementById('statusIndicator');
+                this.statusText = document.getElementById('statusText');
+                this.errorMessage = document.getElementById('errorMessage');
+                this.errorText = document.getElementById('errorText');
+                this.remoteVideo = document.getElementById('remoteVideo');
+                this.videoPlaceholder = document.getElementById('videoPlaceholder');
+            }
+
+            setupEventListeners() {
+                this.connectBtn.addEventListener('click', () => this.connect());
+                this.disconnectBtn.addEventListener('click', () => this.disconnect());
+                
+                this.sessionIdInput.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.toUpperCase();
+                });
+            }
+
+            async connect() {
+                const sessionId = this.sessionIdInput.value.trim();
+                if (!sessionId) {
+                    this.showError('Please enter a session ID');
+                    return;
+                }
+
+                try {
+                    this.setStatus('connecting', 'Connecting...');
+                    this.hideError();
+                    this.sessionId = sessionId;
+                    
+                    await this.connectWebSocket();
+                    await this.setupPeerConnection();
+                    await this.joinSession();
+                    
+                } catch (error) {
+                    console.error('Connection error:', error);
+                    this.setStatus('disconnected', 'Disconnected');
+                    
+                    if (error.message.includes('Session not found')) {
+                        this.showError('Session not found. Make sure the host has started sharing and the session ID is correct.');
+                    } else {
+                        this.showError('Failed to connect. Please try again.');
+                    }
+                }
+            }
+
+            async connectWebSocket() {
+                return new Promise((resolve, reject) => {
+                    console.log('Attempting to connect to WebSocket server...');
+                    this.ws = new WebSocket('ws://localhost:8080');
+
+                    this.ws.onopen = () => {
+                        console.log('WebSocket connected successfully');
+                        resolve();
+                    };
+
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket connection error:', error);
+                        reject(new Error('Failed to connect to WebSocket server. Make sure the server is running.'));
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        console.log('Received WebSocket message:', event.data);
+                        this.handleSignalingMessage(JSON.parse(event.data));
+                    };
+
+                    this.ws.onclose = () => {
+                        console.log('WebSocket disconnected');
+                        this.setStatus('disconnected', 'Disconnected');
+                    };
+                });
+            }
+
+            async setupPeerConnection() {
+                this.peerConnection = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+
+                this.peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('Sending ICE candidate to host');
+                        this.sendSignalingMessage({
+                            type: 'ice_candidate',
+                            sessionId: this.sessionId,
+                            clientId: this.clientId,
+                            data: event.candidate
+                        });
+                    }
+                };
+
+                this.peerConnection.ontrack = (event) => {
+                    console.log('🎥 Received remote stream!', event.streams);
+                    console.log('Stream tracks:', event.streams[0].getTracks());
+                    
+                    this.remoteVideo.srcObject = event.streams[0];
+                    this.remoteVideo.classList.remove('hidden');
+                    this.videoPlaceholder.classList.add('hidden');
+                    this.setStatus('connected', 'Connected - Video Streaming');
+                    this.isConnected = true;
+                    this.toggleButtons(true);
+                    
+                    // Force video to play
+                    this.remoteVideo.play().catch(e => console.error('Video play error:', e));
+                };
+
+                this.peerConnection.onconnectionstatechange = () => {
+                    console.log('🔗 Connection state changed:', this.peerConnection.connectionState);
+                    if (this.peerConnection.connectionState === 'connected') {
+                        console.log('✅ WebRTC connection established!');
+                        this.setStatus('connected', 'Connected');
+                    } else if (this.peerConnection.connectionState === 'disconnected') {
+                        console.log('❌ WebRTC connection lost');
+                        this.setStatus('disconnected', 'Disconnected');
+                        this.isConnected = false;
+                        this.toggleButtons(false);
+                    } else if (this.peerConnection.connectionState === 'connecting') {
+                        console.log('🔄 WebRTC connecting...');
+                        this.setStatus('connecting', 'Establishing connection...');
+                    } else if (this.peerConnection.connectionState === 'failed') {
+                        console.log('❌ WebRTC connection failed');
+                        this.setStatus('disconnected', 'Connection failed');
+                        this.showError('WebRTC connection failed. Please try again.');
+                    }
+                };
+
+                this.peerConnection.oniceconnectionstatechange = () => {
+                    console.log('🧊 ICE connection state:', this.peerConnection.iceConnectionState);
+                };
+
+                this.peerConnection.onicegatheringstatechange = () => {
+                    console.log('🧊 ICE gathering state:', this.peerConnection.iceGatheringState);
+                };
+            }
+
+            async joinSession() {
+                return new Promise((resolve, reject) => {
+                    console.log('Joining session:', this.sessionId);
+                    
+                    this.sendSignalingMessage({
+                        type: 'join_session',
+                        sessionId: this.sessionId,
+                        clientId: this.clientId
+                    });
+
+                    const handleMessage = (event) => {
+                        const message = JSON.parse(event.data);
+                        console.log('Session join response:', message);
+                        
+                        if (message.type === 'session_joined' && message.sessionId === this.sessionId) {
+                            console.log('Successfully joined session');
+                            this.ws.removeEventListener('message', handleMessage);
+                            resolve();
+                        } else if (message.type === 'session_error') {
+                            console.error('Session join failed:', message.error);
+                            this.ws.removeEventListener('message', handleMessage);
+                            reject(new Error(message.error));
+                        }
+                    };
+
+                    this.ws.addEventListener('message', handleMessage);
+                });
+            }
+
+            handleSignalingMessage(message) {
+                console.log('Received signaling message:', message.type, message);
+
+                switch (message.type) {
+                    case 'client_joined':
+                        console.log('Successfully joined session');
+                        break;
+                    case 'offer':
+                        console.log('Received offer from host');
+                        this.handleOffer(message.data || message.offer);
+                        break;
+                    case 'ice_candidate':
+                        console.log('Received ICE candidate');
+                        this.handleIceCandidate(message.data || message.candidate);
+                        break;
+                    case 'host_disconnected':
+                        console.log('Host disconnected');
+                        this.setStatus('disconnected', 'Host disconnected');
+                        this.disconnect();
+                        break;
+                    case 'session_error':
+                        console.error('Session error:', message.error);
+                        this.showError(message.error);
+                        this.setStatus('disconnected', 'Disconnected');
+                        break;
+                    default:
+                        console.log('Unknown message type:', message.type);
+                }
+            }
+
+            async handleOffer(offer) {
+                if (!this.peerConnection) return;
+
+                try {
+                    await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                    const answer = await this.peerConnection.createAnswer();
+                    await this.peerConnection.setLocalDescription(answer);
+
+                    this.sendSignalingMessage({
+                        type: 'answer',
+                        sessionId: this.sessionId,
+                        clientId: this.clientId,
+                        data: answer
+                    });
+                } catch (error) {
+                    console.error('Error handling offer:', error);
+                }
+            }
+
+            async handleIceCandidate(candidate) {
+                if (!this.peerConnection) return;
+
+                try {
+                    await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (error) {
+                    console.error('Error handling ICE candidate:', error);
+                }
+            }
+
+            sendSignalingMessage(message) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify(message));
+                } else {
+                    console.error('WebSocket not connected');
+                }
+            }
+
+            disconnect() {
+                this.isConnected = false;
+                this.setStatus('disconnected', 'Disconnected');
+                this.hideError();
+                
+                if (this.remoteVideo.srcObject) {
+                    const stream = this.remoteVideo.srcObject;
+                    stream.getTracks().forEach(track => track.stop());
+                    this.remoteVideo.srcObject = null;
+                }
+                
+                this.remoteVideo.classList.add('hidden');
+                this.videoPlaceholder.classList.remove('hidden');
+
+                if (this.ws) {
+                    this.sendSignalingMessage({
+                        type: 'leave_session',
+                        sessionId: this.sessionId,
+                        clientId: this.clientId
+                    });
+                    this.ws.close();
+                    this.ws = null;
+                }
+
+                if (this.peerConnection) {
+                    this.peerConnection.close();
+                    this.peerConnection = null;
+                }
+
+                this.toggleButtons(false);
+            }
+
+            setStatus(status, text) {
+                this.statusText.textContent = text;
+                this.statusIndicator.className = `w-3 h-3 rounded-full ${
+                    status === 'connected' ? 'bg-green-500' :
+                    status === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
+                }`;
+            }
+
+            showError(message) {
+                this.errorText.textContent = message;
+                this.errorMessage.classList.remove('hidden');
+            }
+
+            hideError() {
+                this.errorMessage.classList.add('hidden');
+            }
+
+            toggleButtons(connected) {
+                if (connected) {
+                    this.connectBtn.classList.add('hidden');
+                    this.disconnectBtn.classList.remove('hidden');
+                    this.sessionIdInput.disabled = true;
+                } else {
+                    this.connectBtn.classList.remove('hidden');
+                    this.disconnectBtn.classList.add('hidden');
+                    this.sessionIdInput.disabled = false;
+                }
+            }
+        }
+
+        // Initialize the web client
+        const webClient = new WebClientManager();
+    </script>
+</body>
+</html>

@@ -30,12 +30,14 @@ export class WebRTCManager {
 
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
-        this.sendSignalingMessage({
-          type: 'ice_candidate',
-          sessionId: this.sessionId,
-          clientId: this.clientId,
-          data: event.candidate
-        })
+              // For host, send ICE candidate to all clients (no specific clientId)
+      // For client, send ICE candidate to host (with clientId)
+      this.sendSignalingMessage({
+        type: 'ice_candidate',
+        sessionId: this.sessionId,
+        clientId: this.isHost ? '' : this.clientId, // Empty for host, clientId for client
+        data: event.candidate
+      })
       }
     }
 
@@ -166,9 +168,15 @@ export class WebRTCManager {
       throw new Error('Peer connection not initialized')
     }
 
+    console.log('🎥 Adding stream to peer connection:', stream)
+    console.log('Stream tracks:', stream.getTracks())
+    
     stream.getTracks().forEach(track => {
+      console.log('Adding track:', track.kind, track.label)
       this.peerConnection?.addTrack(track, stream)
     })
+    
+    console.log('✅ All tracks added to peer connection')
   }
 
   private handleSignalingMessage(message: SignalingMessage) {
@@ -177,6 +185,10 @@ export class WebRTCManager {
     switch (message.type) {
       case 'client_joined':
         console.log('Client joined:', message.clientId)
+        // Host should create and send offer when client joins
+        if (this.isHost) {
+          this.createAndSendOffer(message.clientId)
+        }
         break
 
       case 'client_left':
@@ -188,16 +200,20 @@ export class WebRTCManager {
         // Don't throw here, let the calling code handle the error
         break
 
+      case 'session_created':
+        console.log('Session created successfully')
+        break
+
       case 'offer':
-        this.handleOffer(message.data)
+        this.handleOffer(message.data || message.offer)
         break
 
       case 'answer':
-        this.handleAnswer(message.data)
+        this.handleAnswer(message.data || message.answer)
         break
 
       case 'ice_candidate':
-        this.handleIceCandidate(message.data)
+        this.handleIceCandidate(message.data || message.candidate)
         break
 
       case 'host_disconnected':
@@ -215,9 +231,17 @@ export class WebRTCManager {
   }
 
   private async handleOffer(offer: RTCSessionDescriptionInit) {
-    if (!this.peerConnection) return
+    if (!this.peerConnection || !offer) return
 
     try {
+      console.log('Handling offer:', offer)
+      
+      // Validate offer
+      if (!offer.type || !offer.sdp) {
+        console.error('Invalid offer received:', offer)
+        return
+      }
+
       await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
       const answer = await this.peerConnection.createAnswer()
       await this.peerConnection.setLocalDescription(answer)
@@ -234,9 +258,17 @@ export class WebRTCManager {
   }
 
   private async handleAnswer(answer: RTCSessionDescriptionInit) {
-    if (!this.peerConnection) return
+    if (!this.peerConnection || !answer) return
 
     try {
+      console.log('Handling answer:', answer)
+      
+      // Validate answer
+      if (!answer.type || !answer.sdp) {
+        console.error('Invalid answer received:', answer)
+        return
+      }
+
       await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
     } catch (error) {
       console.error('Error handling answer:', error)
@@ -244,9 +276,17 @@ export class WebRTCManager {
   }
 
   private async handleIceCandidate(candidate: RTCIceCandidateInit) {
-    if (!this.peerConnection) return
+    if (!this.peerConnection || !candidate) return
 
     try {
+      console.log('Handling ICE candidate:', candidate)
+      
+      // Validate ICE candidate
+      if (!candidate.candidate || (!candidate.sdpMid && candidate.sdpMLineIndex === null)) {
+        console.error('Invalid ICE candidate received:', candidate)
+        return
+      }
+
       await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
     } catch (error) {
       console.error('Error handling ICE candidate:', error)
@@ -285,6 +325,30 @@ export class WebRTCManager {
     })
 
     return offer
+  }
+
+  private async createAndSendOffer(clientId: string): Promise<void> {
+    if (!this.peerConnection) {
+      console.error('Peer connection not initialized')
+      return
+    }
+
+    try {
+      console.log('Creating offer for client:', clientId)
+      const offer = await this.peerConnection.createOffer()
+      await this.peerConnection.setLocalDescription(offer)
+
+      this.sendSignalingMessage({
+        type: 'offer',
+        sessionId: this.sessionId,
+        clientId: clientId,
+        data: offer
+      })
+
+      console.log('Offer sent to client:', clientId)
+    } catch (error) {
+      console.error('Error creating offer:', error)
+    }
   }
 
   public disconnect() {

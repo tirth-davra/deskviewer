@@ -43,6 +43,8 @@ export default function HostPage() {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
+        console.log('🎥 Host video preview set:', stream)
+        console.log('Host stream tracks:', stream.getTracks())
       }
 
       // Initialize WebRTC manager
