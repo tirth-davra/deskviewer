@@ -36,6 +36,7 @@ export default function ClientPage() {
           event.preventDefault()
         }
         
+        // Only send key_down events - robotjs.keyTap() handles press+release
         webrtcManagerRef.current.sendKeyboardEvent(
           'key_down',
           event.key,
@@ -48,20 +49,8 @@ export default function ClientPage() {
       }
     }
 
-    const handleKeyUp = (event: KeyboardEvent) => {
-      // Send key up events to host if connected and enabled
-      if (keyboardControlEnabled && isConnected && webrtcManagerRef.current) {
-        webrtcManagerRef.current.sendKeyboardEvent(
-          'key_up',
-          event.key,
-          event.code,
-          event.ctrlKey,
-          event.shiftKey,
-          event.altKey,
-          event.metaKey
-        )
-      }
-    }
+    // Remove key_up handler to prevent double key presses
+    // robotjs.keyTap() already simulates both press and release
 
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement && isFullscreen) {
@@ -84,12 +73,10 @@ export default function ClientPage() {
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('keyup', handleKeyUp)
     document.addEventListener('fullscreenchange', handleFullscreenChange)
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      document.removeEventListener('keyup', handleKeyUp)
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
   }, [isFullscreen, viewMode, keyboardControlEnabled, isConnected])
