@@ -7,6 +7,8 @@ export interface ElectronAPI {
   mouseDown(x: number, y: number, button?: string): Promise<{ success: boolean, error?: string }>
   mouseUp(x: number, y: number, button?: string): Promise<{ success: boolean, error?: string }>
   getScreenResolution(): Promise<{ width: number, height: number }>
+  keyTap(key: string, modifiers?: string[]): Promise<{ success: boolean, error?: string }>
+  keyToggle(key: string, down: boolean, modifiers?: string[]): Promise<{ success: boolean, error?: string }>
 }
 
 declare global {

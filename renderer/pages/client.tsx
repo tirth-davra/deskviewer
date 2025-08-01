@@ -13,17 +13,53 @@ export default function ClientPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [hostResolution, setHostResolution] = useState<{ width: number, height: number } | null>(null)
   const [mouseControlEnabled, setMouseControlEnabled] = useState(true)
+  const [keyboardControlEnabled, setKeyboardControlEnabled] = useState(true)
   const windowedVideoRef = useRef<HTMLVideoElement>(null)
   const fullscreenVideoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const webrtcManagerRef = useRef<WebRTCManager | null>(null)
   const lastMouseMoveRef = useRef<number>(0)
 
-  // Handle ESC key for exiting fullscreen
+  // Handle keyboard events and fullscreen
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Handle ESC key for exiting fullscreen
       if (event.key === 'Escape' && isFullscreen) {
         exitFullscreen()
+        return
+      }
+
+      // Send keyboard events to host if connected and enabled
+      if (keyboardControlEnabled && isConnected && webrtcManagerRef.current) {
+        // Prevent default browser behavior for most keys when controlling remote
+        if (event.key !== 'F12' && event.key !== 'F5') { // Allow dev tools and refresh
+          event.preventDefault()
+        }
+        
+        webrtcManagerRef.current.sendKeyboardEvent(
+          'key_down',
+          event.key,
+          event.code,
+          event.ctrlKey,
+          event.shiftKey,
+          event.altKey,
+          event.metaKey
+        )
+      }
+    }
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      // Send key up events to host if connected and enabled
+      if (keyboardControlEnabled && isConnected && webrtcManagerRef.current) {
+        webrtcManagerRef.current.sendKeyboardEvent(
+          'key_up',
+          event.key,
+          event.code,
+          event.ctrlKey,
+          event.shiftKey,
+          event.altKey,
+          event.metaKey
+        )
       }
     }
 
@@ -48,13 +84,15 @@ export default function ClientPage() {
     }
 
     document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keyup', handleKeyUp)
     document.addEventListener('fullscreenchange', handleFullscreenChange)
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keyup', handleKeyUp)
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
-  }, [isFullscreen, viewMode])
+  }, [isFullscreen, viewMode, keyboardControlEnabled, isConnected])
 
   const connectToHost = async () => {
     if (!sessionId.trim()) {
@@ -569,9 +607,10 @@ export default function ClientPage() {
                 </div>
               )}
               
-              {/* Mouse Control Toggle */}
+              {/* Control Toggles */}
               {isConnected && (
                 <div className="mt-4 space-y-3">
+                  {/* Mouse Control Toggle */}
                   <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center space-x-2">
                       <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -592,8 +631,28 @@ export default function ClientPage() {
                       />
                     </button>
                   </div>
-                  
 
+                  {/* Keyboard Control Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                      <span className="text-purple-700 font-medium">Keyboard Control</span>
+                    </div>
+                    <button
+                      onClick={() => setKeyboardControlEnabled(!keyboardControlEnabled)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        keyboardControlEnabled ? 'bg-purple-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          keyboardControlEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               )}
 

@@ -133,4 +133,34 @@ ipcMain.handle('get-screen-resolution', async () => {
   }
 })
 
+// Handle keyboard control
+ipcMain.handle('key-tap', async (event, key: string, modifiers?: string[]) => {
+  try {
+    if (modifiers && modifiers.length > 0) {
+      robot.keyTap(key, modifiers)
+    } else {
+      robot.keyTap(key)
+    }
+    return { success: true }
+  } catch (error) {
+    console.error('❌ MAIN: Key tap error:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('key-toggle', async (event, key: string, down: boolean, modifiers?: string[]) => {
+  try {
+    const state = down ? 'down' : 'up'
+    if (modifiers && modifiers.length > 0) {
+      robot.keyToggle(key, state, modifiers)
+    } else {
+      robot.keyToggle(key, state)
+    }
+    return { success: true }
+  } catch (error) {
+    console.error('❌ MAIN: Key toggle error:', error)
+    return { success: false, error: error.message }
+  }
+})
+
 

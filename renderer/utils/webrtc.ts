@@ -8,6 +8,14 @@ export interface SignalingMessage {
     y: number
     button?: 'left' | 'right' | 'middle'
   }
+  keyboardData?: {
+    key: string
+    code: string
+    ctrlKey: boolean
+    shiftKey: boolean
+    altKey: boolean
+    metaKey: boolean
+  }
   resolution?: {
     width: number
     height: number
@@ -23,6 +31,7 @@ export class WebRTCManager {
   private onStreamReceived?: (stream: MediaStream) => void
   private onConnectionStateChange?: (state: string) => void
   private onMouseEvent?: (mouseData: { x: number, y: number, button?: string }) => void
+  private onKeyboardEvent?: (keyboardData: { key: string, code: string, ctrlKey: boolean, shiftKey: boolean, altKey: boolean, metaKey: boolean }) => void
   private onScreenResolution?: (resolution: { width: number, height: number }) => void
 
   constructor() {
@@ -259,6 +268,17 @@ export class WebRTCManager {
         }
         break
 
+      case 'key_down':
+      case 'key_up':
+        if (message.type !== 'key_down' && message.type !== 'key_up') {
+          console.log(`⌨️ WebRTC: Received ${message.type} message`)
+        }
+        
+        if (this.isHost && message.keyboardData) {
+          this.onKeyboardEvent?.(message.keyboardData)
+        }
+        break
+
       default:
         console.warn('Unknown signaling message type:', message.type)
     }
@@ -349,6 +369,26 @@ export class WebRTCManager {
 
   public setOnScreenResolution(callback: (resolution: { width: number, height: number }) => void) {
     this.onScreenResolution = callback
+  }
+
+  public setOnKeyboardEvent(callback: (keyboardData: { key: string, code: string, ctrlKey: boolean, shiftKey: boolean, altKey: boolean, metaKey: boolean }) => void) {
+    this.onKeyboardEvent = callback
+  }
+
+  public sendKeyboardEvent(type: 'key_down' | 'key_up', key: string, code: string, ctrlKey: boolean, shiftKey: boolean, altKey: boolean, metaKey: boolean) {
+    if (!this.isHost) {
+      // Only log special keys to avoid spam
+      if (key.length > 1 || ctrlKey || shiftKey || altKey || metaKey) {
+        console.log(`⌨️ CLIENT: Sending ${type} event: ${key}${ctrlKey ? ' +Ctrl' : ''}${shiftKey ? ' +Shift' : ''}${altKey ? ' +Alt' : ''}${metaKey ? ' +Meta' : ''}`)
+      }
+      
+      this.sendSignalingMessage({
+        type,
+        sessionId: this.sessionId,
+        clientId: this.clientId,
+        keyboardData: { key, code, ctrlKey, shiftKey, altKey, metaKey }
+      })
+    }
   }
 
   public sendMouseEvent(type: 'mouse_move' | 'mouse_click' | 'mouse_down' | 'mouse_up', x: number, y: number, button?: 'left' | 'right' | 'middle') {

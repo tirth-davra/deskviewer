@@ -99,6 +99,11 @@ class SignalingServer {
           this.forwardScreenResolution(sessionId, clientId, message.resolution, ws)
           break
         
+        case 'key_down':
+        case 'key_up':
+          this.forwardKeyboardEvent(sessionId, clientId, type, message.keyboardData, ws)
+          break
+        
         default:
           console.warn('Unknown message type:', type)
     }
@@ -311,6 +316,29 @@ class SignalingServer {
         }))
         console.log(`✅ Screen resolution forwarded to client: ${cId}`)
       })
+    }
+  }
+
+  forwardKeyboardEvent(sessionId, clientId, eventType, keyboardData, senderWs) {
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      console.log(`❌ Session ${sessionId} not found for keyboard event forwarding`)
+      return
+    }
+
+    // Forward keyboard event from client to host
+    if (senderWs !== session.host) {
+      session.host.send(JSON.stringify({
+        type: eventType,
+        sessionId,
+        clientId,
+        keyboardData
+      }))
+      
+      // Only log special keys to avoid spam
+      if (keyboardData && (keyboardData.key.length > 1 || keyboardData.ctrlKey || keyboardData.shiftKey || keyboardData.altKey || keyboardData.metaKey)) {
+        console.log(`✅ Keyboard event ${eventType} forwarded to host: ${keyboardData.key}`)
+      }
     }
   }
 

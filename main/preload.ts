@@ -25,7 +25,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   mouseClick: (x: number, y: number, button?: string) => ipcRenderer.invoke('mouse-click', x, y, button),
   mouseDown: (x: number, y: number, button?: string) => ipcRenderer.invoke('mouse-down', x, y, button),
   mouseUp: (x: number, y: number, button?: string) => ipcRenderer.invoke('mouse-up', x, y, button),
-  getScreenResolution: () => ipcRenderer.invoke('get-screen-resolution')
+  getScreenResolution: () => ipcRenderer.invoke('get-screen-resolution'),
+  keyTap: (key: string, modifiers?: string[]) => ipcRenderer.invoke('key-tap', key, modifiers),
+  keyToggle: (key: string, down: boolean, modifiers?: string[]) => ipcRenderer.invoke('key-toggle', key, down, modifiers)
 })
 
 export type IpcHandler = typeof handler

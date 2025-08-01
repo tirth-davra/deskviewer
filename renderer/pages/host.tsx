@@ -3,6 +3,39 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { WebRTCManager } from '../utils/webrtc'
 
+// Convert browser key names to robotjs format
+const convertKeyToRobotjs = (key: string, code: string): string => {
+  // Handle special keys
+  const keyMap: { [key: string]: string } = {
+    ' ': 'space',
+    'Enter': 'enter',
+    'Tab': 'tab',
+    'Escape': 'escape',
+    'Backspace': 'backspace',
+    'Delete': 'delete',
+    'ArrowUp': 'up',
+    'ArrowDown': 'down',
+    'ArrowLeft': 'left',
+    'ArrowRight': 'right',
+    'Home': 'home',
+    'End': 'end',
+    'PageUp': 'pageup',
+    'PageDown': 'pagedown',
+    'Insert': 'insert',
+    'CapsLock': 'capslock',
+    'NumLock': 'numlock',
+    'ScrollLock': 'scrolllock',
+    'PrintScreen': 'printscreen',
+    'Pause': 'pause',
+    'F1': 'f1', 'F2': 'f2', 'F3': 'f3', 'F4': 'f4',
+    'F5': 'f5', 'F6': 'f6', 'F7': 'f7', 'F8': 'f8',
+    'F9': 'f9', 'F10': 'f10', 'F11': 'f11', 'F12': 'f12'
+  }
+  
+  // Return mapped key or lowercase original key
+  return keyMap[key] || key.toLowerCase()
+}
+
 export default function HostPage() {
   const [sessionId, setSessionId] = useState<string>('')
   const [isSharing, setIsSharing] = useState(false)
@@ -74,6 +107,26 @@ export default function HostPage() {
           }
         } catch (error) {
           console.error('❌ HOST: Mouse control error:', error)
+        }
+      })
+
+      // Set up keyboard event handler for remote control
+      webrtcManagerRef.current.setOnKeyboardEvent(async (keyboardData) => {
+        try {
+          // Convert browser key names to robotjs format
+          const robotKey = convertKeyToRobotjs(keyboardData.key, keyboardData.code)
+          const modifiers = []
+          
+          if (keyboardData.ctrlKey) modifiers.push('ctrl')
+          if (keyboardData.shiftKey) modifiers.push('shift')
+          if (keyboardData.altKey) modifiers.push('alt')
+          if (keyboardData.metaKey) modifiers.push('cmd')
+          
+          // Use keyTap for most keys (simulates press and release)
+          await window.electronAPI.keyTap(robotKey, modifiers.length > 0 ? modifiers : undefined)
+          
+        } catch (error) {
+          console.error('❌ HOST: Keyboard control error:', error)
         }
       })
 
