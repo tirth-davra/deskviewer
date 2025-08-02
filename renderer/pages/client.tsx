@@ -56,11 +56,20 @@ export default function ClientPage() {
         setRole(detectedRole)
         
         if (detectedRole === 'host') {
-          // Show screen sharing permission popup
-          setShowScreenSharePopup(true)
+          // Host connects first - just set status, no popup yet
+          setConnectionStatus('waiting_for_client')
+          setIsConnected(true)
         } else if (detectedRole === 'client') {
           setConnectionStatus('connected')
           setIsConnected(true)
+        }
+      })
+
+      // Listen for when a client joins (only for host)
+      webrtc.setOnClientJoined(() => {
+        if (role === 'host') {
+          // Show screen sharing permission popup when client joins
+          setShowScreenSharePopup(true)
         }
       })
 
@@ -158,6 +167,8 @@ export default function ClientPage() {
     switch (connectionStatus) {
       case 'connecting':
         return 'Connecting to session...'
+      case 'waiting_for_client':
+        return 'Waiting for someone to join...'
       case 'starting_screen_share':
         return 'Starting screen sharing...'
       case 'connected':
@@ -174,6 +185,7 @@ export default function ClientPage() {
   const getStatusColor = () => {
     switch (connectionStatus) {
       case 'connecting':
+      case 'waiting_for_client':
       case 'starting_screen_share':
         return 'text-blue-600'
       case 'connected':

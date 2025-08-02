@@ -37,6 +37,7 @@ export class WebRTCManager {
   private onKeyboardEvent?: (keyboardData: { key: string, code: string, ctrlKey: boolean, shiftKey: boolean, altKey: boolean, metaKey: boolean }) => void
   private onScreenResolution?: (resolution: { width: number, height: number }) => void
   private onRoleDetected?: (role: 'host' | 'client') => void
+  private onClientJoined?: () => void
 
   constructor() {
     this.setupPeerConnection()
@@ -173,6 +174,8 @@ export class WebRTCManager {
     switch (message.type) {
       case 'client_joined':
         console.log('Client joined:', message.clientId)
+        // Notify the UI that a client joined
+        this.onClientJoined?.()
         // Host should create and send offer when client joins
         if (this.isHost) {
           this.createAndSendOffer(message.clientId)
@@ -342,6 +345,10 @@ export class WebRTCManager {
 
   public setOnRoleDetected(callback: (role: 'host' | 'client') => void) {
     this.onRoleDetected = callback
+  }
+
+  public setOnClientJoined(callback: () => void) {
+    this.onClientJoined = callback
   }
 
   public sendKeyboardEvent(type: 'key_down' | 'key_up', key: string, code: string, ctrlKey: boolean, shiftKey: boolean, altKey: boolean, metaKey: boolean) {
