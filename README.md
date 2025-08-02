@@ -1,90 +1,100 @@
-<p align="center"><img src="https://i.imgur.com/a9QWW0v.png"></p>
-
 # DeskViewer - Remote Desktop Application
 
-A remote desktop application built with Nextron (Next.js + Electron) that allows screen sharing between computers.
+A complete remote desktop application built with Nextron (Next.js + Electron) that provides screen sharing and remote control capabilities.
 
 ## Features
 
-### Phase 1 (Current)
-- **Host Mode**: Share your screen with others using a randomly generated session ID
-- **Client Mode**: Connect to a host using their session ID to view their screen
-- **Real-time Communication**: WebSocket signaling server for peer-to-peer connections
-- **Screen Sharing**: WebRTC-based screen streaming with low latency
-- **Modern UI**: Beautiful, responsive interface built with Tailwind CSS
+- **Screen Sharing**: Share your screen with remote clients
+- **Mouse Control**: Remote mouse control with click and drag support
+- **Keyboard Control**: Remote keyboard input with modifier key support
+- **Fullscreen Mode**: AnyDesk-like fullscreen experience
+- **Windowed Mode**: Multitasking support with windowed view
+- **Real-time Communication**: WebRTC-based peer-to-peer streaming
+- **Professional UI**: Modern, responsive interface
 
 ## Tech Stack
 
-- **Frontend**: Next.js + React + TypeScript
+- **Frontend**: Next.js, React, TypeScript, Tailwind CSS
 - **Desktop**: Electron
-- **Styling**: Tailwind CSS
-- **Real-time Communication**: WebSocket + WebRTC
-- **Screen Capture**: Electron's desktopCapturer API
+- **Remote Control**: robotjs (@jitsi/robotjs)
+- **Real-time**: WebRTC, WebSocket
+- **Signaling**: Custom WebSocket server
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
+- Node.js 16+ 
 - npm or yarn
 
 ### Installation
 
-1. Clone the repository:
 ```bash
+# Clone the repository
 git clone <repository-url>
 cd deskviewer
-```
 
-2. Install dependencies:
-```bash
+# Install dependencies
 npm install
 ```
 
-3. Start the development server:
+### Quick Start
+
+```bash
+# Start the application (WebSocket server starts automatically)
+npm run dev
+```
+
+The WebSocket signaling server is now built into the application and starts automatically when you launch DeskViewer.
+
+## Usage
+
+### Starting the Application
+
+Simply start the DeskViewer application:
 ```bash
 npm run dev
 ```
 
-4. Build for production:
-```bash
-npm run build
-```
-
-## Usage
+The WebSocket signaling server starts automatically with the application.
 
 ### Host Mode (Screen Sharing)
 
-1. Launch the application
-2. Click "Host - Share Your Screen"
-3. A random session ID will be generated (e.g., "ABC123")
-4. Click "Start Sharing" to begin screen capture
-5. Share the session ID with the person you want to connect with
+1. Click "Host" in the application
+2. Click "Start Sharing" to begin screen sharing
+3. Share the generated Session ID with clients
+4. Allow remote control when prompted
 
-### Client Mode (View Remote Screen)
+### Client Mode (Remote Control)
 
-1. Launch the application
-2. Click "Client - View Remote Screen"
-3. Enter the session ID provided by the host
-4. Click "Connect" to join the session
-5. The remote screen will appear in the video player
+1. Click "Client" in the application
+2. Enter the Session ID provided by the host
+3. Click "Connect" to join the session
+4. Use mouse and keyboard to control the remote computer
+
+### Important Notes
+
+- **Self-Contained**: No separate server setup required
+- **Session ID**: Unique identifier for each sharing session
+- **Permissions**: Allow screen sharing and remote control when prompted
+- **Network**: Both host and client must be on the same network or have proper port forwarding
 
 ## Architecture
 
 ### Components
 
-- **WebSocket Signaling Server**: Handles session management and WebRTC signaling
-- **WebRTC Manager**: Manages peer-to-peer connections and media streaming
-- **Host Page**: Screen sharing interface with session management
-- **Client Page**: Remote screen viewing interface
+- **WebSocket Server** (`websocket-server.js`): Signaling server for WebRTC
+- **Host Application**: Screen capture and remote control receiver
+- **Client Application**: Remote control interface and stream viewer
+- **WebRTC Manager** (`renderer/utils/webrtc.ts`): WebRTC connection management
 
 ### Communication Flow
 
-1. **Session Creation**: Host creates a session with a unique ID
-2. **Client Connection**: Client joins the session using the session ID
-3. **WebRTC Signaling**: Offer/Answer exchange for peer connection setup
-4. **Screen Streaming**: Host streams screen to client via WebRTC
-5. **Real-time Viewing**: Client displays the remote screen
+1. **Signaling**: WebSocket server handles session creation and WebRTC signaling
+2. **Screen Capture**: Host captures screen using Electron's `desktopCapturer`
+3. **Streaming**: WebRTC peer-to-peer connection for real-time video
+4. **Remote Control**: Mouse/keyboard events sent via WebSocket to host
+5. **Control Execution**: Host uses robotjs to simulate mouse/keyboard actions
 
 ## Development
 
@@ -93,69 +103,55 @@ npm run build
 ```
 deskviewer/
 ├── main/                 # Electron main process
-│   ├── background.ts     # Main window and app lifecycle
-│   ├── websocket-server.ts # WebSocket signaling server
-│   └── helpers/          # Helper functions
-├── renderer/             # Next.js frontend
-│   ├── pages/           # React pages
-│   │   ├── home.tsx     # Main landing page
-│   │   ├── host.tsx     # Host mode interface
-│   │   └── client.tsx   # Client mode interface
-│   ├── utils/           # Utility functions
-│   │   └── webrtc.ts    # WebRTC manager
-│   └── styles/          # CSS styles
-└── resources/           # App resources (icons, etc.)
+│   ├── background.ts    # Main process entry point
+│   └── preload.ts       # Preload script for IPC
+├── renderer/            # Next.js frontend
+│   ├── pages/          # React pages
+│   ├── utils/          # Utilities (WebRTC, etc.)
+│   └── styles/         # CSS styles
+├── websocket-server.js  # Signaling server
+└── package.json         # Dependencies and scripts
 ```
 
 ### Key Files
 
-- `main/websocket-server.ts`: WebSocket signaling server implementation
-- `renderer/utils/webrtc.ts`: WebRTC peer connection management
-- `renderer/pages/host.tsx`: Host mode UI and functionality
-- `renderer/pages/client.tsx`: Client mode UI and functionality
+- **`main/background.ts`**: Electron main process with IPC handlers
+- **`renderer/pages/host.tsx`**: Host UI and screen sharing logic
+- **`renderer/pages/client.tsx`**: Client UI and remote control
+- **`renderer/utils/webrtc.ts`**: WebRTC connection management
+- **`websocket-server.js`**: WebSocket signaling server
 
-## Future Phases
+## Features in Detail
 
-### Phase 2 (Planned)
-- Authentication and access control
-- File transfer capabilities
-- Remote control (mouse/keyboard input)
-- Multiple client support
-- Session recording
+### Screen Sharing
+- Uses Electron's `desktopCapturer` for screen capture
+- WebRTC peer-to-peer streaming for low latency
+- Support for multiple displays
 
-### Phase 3 (Planned)
-- TURN/STUN server setup for NAT traversal
-- End-to-end encryption
-- Cross-platform compatibility improvements
-- Performance optimizations
+### Mouse Control
+- Relative coordinate mapping between client and host
+- Support for left, right, and middle mouse buttons
+- Real-time cursor movement and clicking
+
+### Keyboard Control
+- Full keyboard support including special keys
+- Modifier key combinations (Ctrl, Shift, Alt, Meta)
+- Key mapping from browser events to robotjs
+
+### View Modes
+- **Windowed**: Small window for multitasking
+- **Fullscreen**: Immersive AnyDesk-like experience
+- Seamless switching between modes
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **WebSocket Connection Failed**
-   - Ensure the application is running and the signaling server is started
-   - Check firewall settings for port 8080
-
-2. **Screen Sharing Not Working**
-   - Grant screen sharing permissions when prompted
-   - Ensure you're using a supported browser/Electron version
-
-3. **Connection Issues**
-   - Verify both host and client are on the same local network
-   - Check that the session ID is entered correctly
+1. **Connection Failed**: Ensure WebSocket server is running
+2. **Screen Not Visible**: Check firewall settings and network connectivity
+3. **Mouse/Keyboard Not Working**: Verify robotjs installation
+4. **Performance Issues**: Check network bandwidth and computer resources
 
 ## License
 
 This project is licensed under the MIT License.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## Support
-
-For issues and questions, please open an issue on GitHub.

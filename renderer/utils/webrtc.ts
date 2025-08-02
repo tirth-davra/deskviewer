@@ -3,6 +3,9 @@ export interface SignalingMessage {
   sessionId?: string
   clientId?: string
   data?: any
+  offer?: RTCSessionDescriptionInit
+  answer?: RTCSessionDescriptionInit
+  candidate?: RTCIceCandidateInit
   mouseData?: {
     x: number
     y: number
@@ -39,11 +42,12 @@ export class WebRTCManager {
   }
 
   private setupPeerConnection() {
+    // Desktop-optimized configuration
     const configuration: RTCConfiguration = {
       iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-      ]
+        { urls: 'stun:stun.l.google.com:19302' }
+      ],
+      iceCandidatePoolSize: 10
     }
 
     this.peerConnection = new RTCPeerConnection(configuration)
@@ -95,14 +99,12 @@ export class WebRTCManager {
 
   private async connectWebSocket(): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Try multiple ways to get HOST_IP
-      const hostIP = process.env.HOST_IP || 
-                     (window as any).HOST_IP || 
-                     localStorage.getItem('HOST_IP') || 
-                     'localhost'
-      const wsUrl = `ws://${hostIP}:8080`
-      
-      // Use configured host IP for connection
+      // Use cloud WebSocket server for internet connectivity
+      // For local testing, use: 'ws://localhost:8080'
+      // For production, use your deployed server URL
+      const wsUrl = process.env.NODE_ENV === 'production' 
+        ? 'wss://deskviewer-cloud-server-production.up.railway.app'  // Your Railway WebSocket server
+        : 'ws://localhost:8080'
       
       this.ws = new WebSocket(wsUrl)
 

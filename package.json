@@ -7,13 +7,6 @@
   "main": "app/background.js",
   "scripts": {
     "dev": "nextron",
-    "start:websocket": "node websocket-server.js",
-    "start:host": "cross-env ELECTRON_ROLE=host nextron",
-    "start:client": "cross-env ELECTRON_ROLE=client concurrently \"next dev renderer -p 8889\" \"wait-on http://localhost:8889 && electron . 8889\"",
-    "start:client-simple": "echo Please close HOST app first, then press any key... && pause && cross-env ELECTRON_ROLE=client nextron",
-    "start:client-network": "echo Enter HOST computer IP address: && set /p HOST_IP= && cross-env ELECTRON_ROLE=client HOST_IP=%HOST_IP% nextron",
-    "network:host": "echo Starting HOST mode for network sharing... && npm run start:websocket & npm run start:host",
-    "network:client": "npm run start:client-network",
     "build": "nextron build",
     "postinstall": "electron-builder install-app-deps"
   },
@@ -28,7 +21,6 @@
     "@types/node": "^20.11.16",
     "@types/react": "^18.2.52",
     "autoprefixer": "^10.4.19",
-    "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron": "^34.0.0",
     "electron-builder": "^24.13.3",
@@ -38,7 +30,6 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwindcss": "^3.4.3",
-    "typescript": "^5.7.3",
-    "wait-on": "^7.2.0"
+    "typescript": "^5.7.3"
   }
 }

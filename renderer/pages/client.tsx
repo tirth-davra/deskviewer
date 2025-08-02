@@ -5,7 +5,7 @@ import { WebRTCManager } from '../utils/webrtc'
 
 export default function ClientPage() {
   const [sessionId, setSessionId] = useState('')
-  const [hostIP, setHostIP] = useState('localhost')
+
   const [isConnected, setIsConnected] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [viewMode, setViewMode] = useState<'windowed' | 'fullscreen'>('windowed')
@@ -91,11 +91,7 @@ export default function ClientPage() {
       setConnectionStatus('connecting')
       setErrorMessage('')
       
-      // Set HOST_IP in multiple places for WebRTC manager to use
-      localStorage.setItem('HOST_IP', hostIP);
-      (window as any).HOST_IP = hostIP;
-      
-      // Set HOST_IP for WebRTC connection
+
       
       // Initialize WebRTC manager
       webrtcManagerRef.current = new WebRTCManager()
@@ -405,23 +401,7 @@ export default function ClientPage() {
                 </p>
               </div>
 
-              {/* Host IP Input */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Host Computer IP Address
-                </label>
-                <input
-                  type="text"
-                  value={hostIP}
-                  onChange={(e) => setHostIP(e.target.value)}
-                  placeholder="Enter host IP (e.g., 192.168.1.5 or localhost)"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black text-lg"
-                  disabled={isConnected}
-                />
-                <p className="text-sm text-gray-600 mt-2">
-                  Enter the IP address of the host computer (use "localhost" for same computer)
-                </p>
-              </div>
+
 
               {/* Session ID Input */}
               <div className="mb-6">

@@ -2,6 +2,7 @@
 module.exports = {
   distDir: process.env.NODE_ENV === 'production' ? '../app' : '.next',
   trailingSlash: true,
+  output: 'export',
   images: {
     unoptimized: true,
   },

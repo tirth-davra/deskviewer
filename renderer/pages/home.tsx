@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter } from 'next/router'
 
 export default function HomePage() {
@@ -29,13 +28,11 @@ export default function HomePage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
-            <Image
-              className="ml-auto mr-auto mb-4"
-              src="/images/logo.png"
-              alt="Logo image"
-              width={80}
-              height={80}
-            />
+            <div className="ml-auto mr-auto mb-4 flex justify-center">
+              <svg className="w-20 h-20 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"/>
+              </svg>
+            </div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">DeskViewer</h1>
             <p className="text-gray-600">Remote Desktop Application</p>
           </div>

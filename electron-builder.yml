@@ -1,6 +1,6 @@
-appId: com.example.nextron
-productName: My Nextron App
-copyright: Copyright © 2018 Yoshihide Shiono
+appId: com.deskviewer.remote
+productName: DeskViewer Remote Desktop
+copyright: Copyright © 2024 DeskViewer
 directories:
   output: dist
   buildResources: resources
@@ -8,5 +8,35 @@ files:
   - from: .
     filter:
       - package.json
-      - app
+      - app/**/*
+      - main/**/*
+      - renderer/**/*
 publish: null
+
+# Windows configuration
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.ico
+  artifactName: DeskViewer-Setup-${version}.${ext}
+  compression: maximum
+
+# macOS configuration  
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+  icon: resources/icon.icns
+  artifactName: DeskViewer-${version}.${ext}
+
+# Linux configuration
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  icon: resources/icon.png
+  artifactName: DeskViewer-${version}.${ext}
