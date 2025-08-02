@@ -36,6 +36,7 @@ export class WebRTCManager {
   private onMouseEvent?: (mouseData: { x: number, y: number, button?: string }) => void
   private onKeyboardEvent?: (keyboardData: { key: string, code: string, ctrlKey: boolean, shiftKey: boolean, altKey: boolean, metaKey: boolean }) => void
   private onScreenResolution?: (resolution: { width: number, height: number }) => void
+  private onRoleDetected?: (role: 'host' | 'client') => void
 
   constructor() {
     this.setupPeerConnection()
@@ -54,14 +55,14 @@ export class WebRTCManager {
 
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
-              // For host, send ICE candidate to all clients (no specific clientId)
-      // For client, send ICE candidate to host (with clientId)
-      this.sendSignalingMessage({
-        type: 'ice_candidate',
-        sessionId: this.sessionId,
-        clientId: this.isHost ? '' : this.clientId, // Empty for host, clientId for client
-        data: event.candidate
-      })
+        // For host, send ICE candidate to all clients (no specific clientId)
+        // For client, send ICE candidate to host (with clientId)
+        this.sendSignalingMessage({
+          type: 'ice_candidate',
+          sessionId: this.sessionId,
+          clientId: this.isHost ? '' : this.clientId, // Empty for host, clientId for client
+          data: event.candidate
+        })
       }
     }
 
@@ -78,33 +79,25 @@ export class WebRTCManager {
     }
   }
 
-  public async startHost(sessionId: string, stream: MediaStream): Promise<void> {
+  // New unified connection method
+  public async connectToSession(sessionId: string, stream?: MediaStream): Promise<void> {
     this.sessionId = sessionId
-    this.isHost = true
-    this.clientId = 'host'
-
-    await this.connectWebSocket()
-    await this.createSession()
-    await this.addStreamToPeerConnection(stream)
-  }
-
-  public async startClient(sessionId: string): Promise<void> {
-    this.sessionId = sessionId
-    this.isHost = false
     this.clientId = `client_${Math.random().toString(36).substr(2, 9)}`
 
     await this.connectWebSocket()
-    await this.joinSession()
+    await this.connectToSessionInternal()
+    
+    // If stream is provided, we're likely the host
+    if (stream) {
+      await this.addStreamToPeerConnection(stream)
+    }
   }
 
   private async connectWebSocket(): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Use cloud WebSocket server for internet connectivity
-      // For local testing, use: 'ws://localhost:8080'
-      // For production, use your deployed server URL
-      const wsUrl = process.env.NODE_ENV === 'production' 
-        ? 'wss://deskviewer-cloud-server-production.up.railway.app'  // Your Railway WebSocket server
-        : 'ws://localhost:8080'
+      // Use cloud WebSocket server for both dev and production
+      // This ensures consistent testing and cross-network functionality
+      const wsUrl = 'wss://deskviewer-cloud-server-production.up.railway.app'
       
       this.ws = new WebSocket(wsUrl)
 
@@ -115,7 +108,7 @@ export class WebRTCManager {
 
       this.ws.onerror = (error) => {
         console.error('WebSocket connection error:', error)
-        reject(new Error('Failed to connect to WebSocket server. Make sure the app is running.'))
+        reject(new Error('Failed to connect to WebSocket server. Make sure you have internet connection.'))
       }
 
       this.ws.onmessage = (event) => {
@@ -129,62 +122,32 @@ export class WebRTCManager {
     })
   }
 
-  private async createSession(): Promise<void> {
+  private async connectToSessionInternal(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.ws) {
         reject(new Error('WebSocket not connected'))
         return
       }
 
-      console.log('Creating session with ID:', this.sessionId)
+      console.log('Connecting to session with ID:', this.sessionId)
       this.sendSignalingMessage({
-        type: 'create_session',
-        sessionId: this.sessionId
-      })
-
-      const handleMessage = (event: MessageEvent) => {
-        const message = JSON.parse(event.data)
-        console.log('Session creation response:', message)
-        
-        if (message.type === 'session_created' && message.sessionId === this.sessionId) {
-          console.log('Session created successfully')
-          this.ws?.removeEventListener('message', handleMessage)
-          resolve()
-        } else if (message.type === 'session_error') {
-          console.error('Session creation failed:', message.error)
-          this.ws?.removeEventListener('message', handleMessage)
-          reject(new Error(message.error))
-        }
-      }
-
-      this.ws.addEventListener('message', handleMessage)
-    })
-  }
-
-  private async joinSession(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.ws) {
-        reject(new Error('WebSocket not connected'))
-        return
-      }
-
-      console.log('Joining session with ID:', this.sessionId, 'Client ID:', this.clientId)
-      this.sendSignalingMessage({
-        type: 'join_session',
+        type: 'connect_to_session',
         sessionId: this.sessionId,
         clientId: this.clientId
       })
 
       const handleMessage = (event: MessageEvent) => {
         const message = JSON.parse(event.data)
-        console.log('Session join response:', message)
+        console.log('Session connection response:', message)
         
-        if (message.type === 'session_joined' && message.sessionId === this.sessionId) {
-          console.log('Successfully joined session')
+        if (message.type === 'session_connected' && message.sessionId === this.sessionId) {
+          console.log('Successfully connected to session')
+          this.isHost = message.role === 'host'
+          this.onRoleDetected?.(message.role)
           this.ws?.removeEventListener('message', handleMessage)
           resolve()
         } else if (message.type === 'session_error') {
-          console.error('Session join failed:', message.error)
+          console.error('Session connection failed:', message.error)
           this.ws?.removeEventListener('message', handleMessage)
           reject(new Error(message.error))
         }
@@ -225,8 +188,8 @@ export class WebRTCManager {
         // Don't throw here, let the calling code handle the error
         break
 
-      case 'session_created':
-        console.log('Session created successfully')
+      case 'session_connected':
+        console.log('Session connected successfully')
         break
 
       case 'offer':
@@ -241,7 +204,7 @@ export class WebRTCManager {
         this.handleIceCandidate(message.data || message.candidate)
         break
 
-            case 'host_disconnected':
+      case 'host_disconnected':
         console.log('Host disconnected')
         this.onConnectionStateChange?.('disconnected')
         break
@@ -375,6 +338,10 @@ export class WebRTCManager {
 
   public setOnKeyboardEvent(callback: (keyboardData: { key: string, code: string, ctrlKey: boolean, shiftKey: boolean, altKey: boolean, metaKey: boolean }) => void) {
     this.onKeyboardEvent = callback
+  }
+
+  public setOnRoleDetected(callback: (role: 'host' | 'client') => void) {
+    this.onRoleDetected = callback
   }
 
   public sendKeyboardEvent(type: 'key_down' | 'key_up', key: string, code: string, ctrlKey: boolean, shiftKey: boolean, altKey: boolean, metaKey: boolean) {
