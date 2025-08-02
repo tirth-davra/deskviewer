@@ -9,6 +9,7 @@ export default function ClientPage() {
   const [connectionStatus, setConnectionStatus] = useState('connecting')
   const [sessionId, setSessionId] = useState('')
   const [error, setError] = useState('')
+  const [role, setRole] = useState<'host' | 'client' | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -47,9 +48,37 @@ export default function ClientPage() {
         }
       })
 
-      webrtc.setOnRoleDetected((role) => {
-        console.log('Role detected:', role)
-        if (role === 'client') {
+      webrtc.setOnRoleDetected(async (detectedRole) => {
+        console.log('Role detected:', detectedRole)
+        setRole(detectedRole)
+        
+        if (detectedRole === 'host') {
+          // Host needs to start screen sharing
+          setConnectionStatus('starting_screen_share')
+          try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+              video: true,
+              audio: false
+            })
+            
+            // Add stream to WebRTC connection
+            await webrtc.addStreamToPeerConnection(stream)
+            
+            // Send screen resolution
+            webrtc.sendScreenResolution(
+              window.screen.width,
+              window.screen.height
+            )
+            
+            setConnectionStatus('connected')
+            setIsConnected(true)
+            console.log('Screen sharing started successfully')
+          } catch (error) {
+            console.error('Failed to start screen sharing:', error)
+            setError('Failed to start screen sharing. Please check permissions.')
+            setConnectionStatus('error')
+          }
+        } else if (detectedRole === 'client') {
           setConnectionStatus('connected')
           setIsConnected(true)
         }
@@ -85,8 +114,10 @@ export default function ClientPage() {
     switch (connectionStatus) {
       case 'connecting':
         return 'Connecting to session...'
+      case 'starting_screen_share':
+        return 'Starting screen sharing...'
       case 'connected':
-        return 'Connected to remote screen'
+        return role === 'host' ? 'Screen sharing active' : 'Connected to remote screen'
       case 'disconnected':
         return 'Disconnected'
       case 'error':
@@ -99,6 +130,7 @@ export default function ClientPage() {
   const getStatusColor = () => {
     switch (connectionStatus) {
       case 'connecting':
+      case 'starting_screen_share':
         return 'text-blue-600'
       case 'connected':
         return 'text-green-600'
@@ -124,7 +156,7 @@ export default function ClientPage() {
             <svg className="w-8 h-8 text-green-400" fill="currentColor" viewBox="0 0 24 24">
               <path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"/>
             </svg>
-            <h1 className="text-xl font-bold">DeskViewer - Client</h1>
+            <h1 className="text-xl font-bold">DeskViewer - {role === 'host' ? 'Host' : 'Client'}</h1>
           </div>
           
           <div className="flex items-center space-x-4">
@@ -179,7 +211,10 @@ export default function ClientPage() {
         {/* Instructions */}
         <div className="bg-gray-800 text-white p-4 text-center">
           <p className="text-gray-300">
-            {isConnected ? 'You can now view and control the remote screen' : 'Connecting to remote screen...'}
+            {role === 'host' 
+              ? 'You are sharing your screen. Others can view and control your desktop.'
+              : 'You can now view and control the remote screen'
+            }
           </p>
         </div>
       </div>

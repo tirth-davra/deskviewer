@@ -157,7 +157,7 @@ export class WebRTCManager {
     })
   }
 
-  private async addStreamToPeerConnection(stream: MediaStream): Promise<void> {
+  public async addStreamToPeerConnection(stream: MediaStream): Promise<void> {
     if (!this.peerConnection) {
       throw new Error('Peer connection not initialized')
     }
