@@ -5,11 +5,13 @@ import { WebRTCManager } from '../utils/webrtc'
 
 export default function ClientPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const webrtcRef = useRef<WebRTCManager | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState('connecting')
   const [sessionId, setSessionId] = useState('')
   const [error, setError] = useState('')
   const [role, setRole] = useState<'host' | 'client' | null>(null)
+  const [showScreenSharePopup, setShowScreenSharePopup] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -27,6 +29,7 @@ export default function ClientPage() {
       
       // Set up WebRTC
       const webrtc = new WebRTCManager()
+      webrtcRef.current = webrtc // Store reference
       
       webrtc.setOnStreamReceived((stream) => {
         console.log('Received remote stream')
@@ -53,31 +56,8 @@ export default function ClientPage() {
         setRole(detectedRole)
         
         if (detectedRole === 'host') {
-          // Host needs to start screen sharing
-          setConnectionStatus('starting_screen_share')
-          try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({
-              video: true,
-              audio: false
-            })
-            
-            // Add stream to WebRTC connection
-            await webrtc.addStreamToPeerConnection(stream)
-            
-            // Send screen resolution
-            webrtc.sendScreenResolution(
-              window.screen.width,
-              window.screen.height
-            )
-            
-            setConnectionStatus('connected')
-            setIsConnected(true)
-            console.log('Screen sharing started successfully')
-          } catch (error) {
-            console.error('Failed to start screen sharing:', error)
-            setError('Failed to start screen sharing. Please check permissions.')
-            setConnectionStatus('error')
-          }
+          // Show screen sharing permission popup
+          setShowScreenSharePopup(true)
         } else if (detectedRole === 'client') {
           setConnectionStatus('connected')
           setIsConnected(true)
@@ -102,6 +82,70 @@ export default function ClientPage() {
       setError('Failed to connect to session. Please check the session ID.')
       setConnectionStatus('error')
     }
+  }
+
+  const startScreenSharing = async () => {
+    setShowScreenSharePopup(false)
+    setConnectionStatus('starting_screen_share')
+    
+    try {
+      let stream: MediaStream
+      
+      try {
+        // Try Electron's desktopCapturer API first - automatically select primary display
+        const sources = await window.electronAPI.getDisplayMedia()
+        
+        if (!sources || sources.length === 0) {
+          throw new Error('No display sources available')
+        }
+        
+        // Automatically select the primary display (first one)
+        const primarySource = sources[0]
+        console.log('Selected primary display:', primarySource.name)
+        
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: primarySource.id
+            }
+          } as any
+        })
+      } catch (electronError) {
+        console.log('Electron API failed, trying browser API:', electronError)
+        // Fallback to browser API - this will show the selection dialog
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: false
+        })
+      }
+      
+      // Use the stored WebRTC instance
+      if (webrtcRef.current) {
+        await webrtcRef.current.addStreamToPeerConnection(stream)
+        
+        // Send screen resolution
+        webrtcRef.current.sendScreenResolution(
+          window.screen.width,
+          window.screen.height
+        )
+      }
+      
+      setConnectionStatus('connected')
+      setIsConnected(true)
+      console.log('Screen sharing started successfully')
+    } catch (error) {
+      console.error('Failed to start screen sharing:', error)
+      setError('Failed to start screen sharing. Please check permissions and try again.')
+      setConnectionStatus('error')
+    }
+  }
+
+  const declineScreenSharing = () => {
+    setShowScreenSharePopup(false)
+    setConnectionStatus('error')
+    setError('Screen sharing was declined by the user.')
   }
 
   const disconnect = () => {
@@ -217,6 +261,41 @@ export default function ClientPage() {
             }
           </p>
         </div>
+
+        {/* Screen Sharing Permission Popup */}
+        {showScreenSharePopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-2xl">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                  <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Allow Screen Sharing?
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Someone is trying to connect to your session. Allow them to view and control your screen?
+                </p>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={declineScreenSharing}
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  >
+                    Decline
+                  </button>
+                  <button
+                    onClick={startScreenSharing}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  >
+                    Allow
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </React.Fragment>
   )
